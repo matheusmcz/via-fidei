@@ -1,3 +1,4 @@
+import { ThemeProvider } from "@/features/theme";
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -52,12 +53,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const theme = localStorage.getItem('via-fidei-theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const shouldBeDark = theme === 'dark' || (!theme && prefersDark);
+                if (shouldBeDark) {
+                  document.documentElement.classList.add('dark');
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <Analytics />
+        <ThemeProvider>
+          {children}
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   );
