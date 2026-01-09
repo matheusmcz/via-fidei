@@ -110,6 +110,10 @@ export function Footer() {
           <p className="mt-2 text-xs">
             Arquediocese de Maceió - Dom. Carlos Alberto Breis - OFM
           </p>
+          <p className="mt-2 text-xs">
+            Paróquia São Paulo Apóstolo - Salvador Lyra - Pe. Manoel José dos
+            Santos
+          </p>
         </div>
       </div>
     </footer>
