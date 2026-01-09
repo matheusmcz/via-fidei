@@ -28,6 +28,10 @@ export const metadata: Metadata = {
     "missas",
   ],
   authors: [{ name: "Via Fidei" }],
+  icons: {
+    icon: "/images/via-fidei-logo.png",
+    apple: "/images/via-fidei-logo.png",
+  },
   openGraph: {
     type: "website",
     locale: "pt_BR",
