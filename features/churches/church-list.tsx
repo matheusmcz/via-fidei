@@ -11,6 +11,7 @@ import {
 import type { Church } from "@/types";
 import { Search } from "lucide-react";
 import { ChurchCard } from "./church-card";
+import { PaginationControls } from "./pagination-controls";
 import { useChurchFilters } from "./use-church-filters";
 
 interface ChurchListProps {
@@ -20,16 +21,22 @@ interface ChurchListProps {
 export function ChurchList({ churches }: ChurchListProps) {
   const {
     filteredChurches,
+    paginatedChurches,
     searchQuery,
     setSearchQuery,
     selectedDistrict,
     setSelectedDistrict,
     districts,
+    currentPage,
+    setCurrentPage,
+    itemsPerPage,
+    setItemsPerPage,
+    totalPages,
   } = useChurchFilters({ churches });
 
   return (
     <div className="space-y-6">
-      {/* Filtros */}
+      {/* Filtros de Busca */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <SearchInput value={searchQuery} onChange={setSearchQuery} />
         <DistrictFilter
@@ -39,15 +46,44 @@ export function ChurchList({ churches }: ChurchListProps) {
         />
       </div>
 
-      {/* Resultado */}
-      {filteredChurches.length > 0 ? (
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredChurches.map((church) => (
+      {/* Controles de Paginação - Topo */}
+      {filteredChurches.length > 0 && (
+        <PaginationControls
+          position="top"
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredChurches.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+        />
+      )}
+
+      {/* Grid de Igrejas */}
+      {paginatedChurches.length > 0 ? (
+        <div
+          data-church-grid
+          className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        >
+          {paginatedChurches.map((church) => (
             <ChurchCard key={church.id} church={church} />
           ))}
         </div>
       ) : (
         <EmptyState searchQuery={searchQuery} />
+      )}
+
+      {/* Controles de Paginação - Rodapé */}
+      {paginatedChurches.length > 0 && (
+        <PaginationControls
+          position="bottom"
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredChurches.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+        />
       )}
     </div>
   );
