@@ -182,9 +182,13 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 ## 👨‍💻 Autor
 
-**Matheus Nascimento**
+**Matheus Vieira do Nascimento**
 
-- GitHub: [@matheusmcz](https://github.com/matheusmcz)
+- 📧 Email: [matheusmczvieira@gmail.com](mailto:matheusmczvieira@gmail.com)
+- 🐙 GitHub: [@matheusmcz](https://github.com/matheusmcz)
+- 💼 LinkedIn: [Matheus Nascimento](https://www.linkedin.com/in/matheusmcz)
+
+Católico - Maceioense - Marido - Pai - Desenvolvedor
 
 ## 🙏 Agradecimentos
 
@@ -195,5 +199,5 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 ---
 
 <div align="center">
-  Feito com ❤️ para a comunidade católica de Maceió
+  Feito com carinho para a comunidade católica de Maceió
 </div>

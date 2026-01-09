@@ -2,6 +2,27 @@
   "name": "via-fidei",
   "version": "0.1.0",
   "private": true,
+  "description": "Aplicação web para encontrar igrejas católicas em Maceió/AL",
+  "author": {
+    "name": "Matheus Vieira do Nascimento",
+    "email": "matheusmczvieira@gmail.com",
+    "url": "https://github.com/matheusmcz"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/matheusmcz/via-fidei.git"
+  },
+  "keywords": [
+    "igreja",
+    "católica",
+    "maceió",
+    "alagoas",
+    "paróquia",
+    "nextjs",
+    "react",
+    "typescript"
+  ],
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
