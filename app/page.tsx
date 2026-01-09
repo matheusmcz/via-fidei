@@ -1,3 +1,4 @@
+import { Footer } from "@/components/footer";
 import { churches } from "@/data/churches";
 import { ChurchList, PageHeader } from "@/features/churches";
 import type { Metadata } from "next";
@@ -21,13 +22,17 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen">
-      <PageHeader />
+    <>
+      <main className="min-h-screen">
+        <PageHeader />
 
-      {/* Content */}
-      <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <ChurchList churches={churches} />
-      </div>
-    </main>
+        {/* Content */}
+        <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <ChurchList churches={churches} />
+        </div>
+      </main>
+
+      <Footer />
+    </>
   );
 }
