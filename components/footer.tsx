@@ -1,4 +1,4 @@
-import { Github, Heart, Mail } from "lucide-react";
+import { Github, Mail } from "lucide-react";
 import Link from "next/link";
 
 export function Footer() {
@@ -93,8 +93,7 @@ export function Footer() {
         {/* Linha de Copyright */}
         <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
           <p className="flex items-center justify-center gap-1">
-            © {currentYear} Via Fidei. Feito com{" "}
-            <Heart className="h-4 w-4 text-red-500 fill-red-500" /> por{" "}
+            © {currentYear} Via Fidei. Desenvolvido e mantido por{" "}
             <a
               href="https://github.com/matheusmcz"
               target="_blank"
@@ -103,6 +102,13 @@ export function Footer() {
             >
               Matheus Vieira do Nascimento
             </a>
+          </p>
+          <p className="mt-2 text-xs">
+            Com a Graça de Nosso Senhor e Salvador Jesus Cristo, a intercessão
+            de Maria Mãe de Deus, Senhora dos Prazeres e o Glorioso São José.
+          </p>
+          <p className="mt-2 text-xs">
+            Arquediocese de Maceió - Dom. Carlos Alberto Breis - OFM
           </p>
         </div>
       </div>
