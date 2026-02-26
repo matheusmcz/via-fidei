@@ -1,1 +1,7 @@
-export type { Church } from "./church";
+export type {
+  Activity,
+  Church,
+  DayOfWeek,
+  RecurrenceType,
+  ScheduleEvent,
+} from "./church";
