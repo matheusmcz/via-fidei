@@ -22,6 +22,13 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 - Hooks de busca e filtros
 - Utilitários do domínio
 
+**`/features/churches/schedule`** - Horários das igrejas
+
+- `ScheduleTabs.tsx` - Componente de abas (Client Component)
+- `ScheduleDayList.tsx` - Lista de horários por dia
+- `ScheduleEmpty.tsx` - Estado vazio
+- `ActivityList.tsx` - Lista de atividades
+
 ### `/components` - Componentes compartilhados
 
 Componentes reutilizáveis em todo o projeto.
@@ -38,14 +45,28 @@ Código auxiliar reutilizável.
 **`/lib/utils`** - Funções utilitárias
 
 - `cn.ts` - Função para merge de classes Tailwind
+- `slugify.ts` - Geração de slugs a partir de nomes
+- `schedule.ts` - Utilitários de horários:
+  - `formatTime()` - Formata hora ("18:00" → "18h")
+  - `formatTimeRange()` - Formata intervalo ("06:30" - "17:30")
+  - `getDayName()` - Nome do dia em português
+  - `groupByDay()` - Agrupa eventos por dia da semana
+  - `getRecurrenceLabel()` - Label de recorrência ("1ª Sexta-feira do mês")
+  - `isValidTime()` - Valida formato HH:MM
+  - `getEventKey()` - Gera chave única para React
 - Outras helpers conforme necessário
 
 ### `/types` - Definições de tipos TypeScript
 
 Tipos e interfaces compartilhados.
 
-- `church.ts` - Interface `Church`
-- Outros tipos conforme necessário
+- `church.ts` - Tipos principais:
+  - `Church` - Interface da igreja
+  - `ScheduleEvent` - Evento de horário (missa, adoração, confissão)
+  - `Activity` - Atividade com horários
+  - `DayOfWeek` - Tipo literal (0-6)
+  - `RecurrenceType` - Tipos de recorrência
+- `index.ts` - Re-exporta todos os tipos
 
 ### `/data` - Dados estáticos
 
@@ -83,3 +104,30 @@ Arquivos públicos servidos diretamente.
 - Props + composição ao invés de Context API
 - Mobile-first (Tailwind)
 - Tipagem forte desde o início
+- Chaves React estáveis (não usar índice de array)
+- Validação de dados de entrada (ex: formato de hora)
+
+## Próximos Passos
+
+### Feature de Clero
+
+Implementação planejada:
+
+1. **Tipos** (`types/church.ts`):
+   - `Clergy` - Interface do clérigo
+   - `ClergyRole` - "parish-priest" | "vicar" | "deacon" | "administrator"
+   - `ClergyTitle` - "padre" | "monsenhor" | "frei" | "dom"
+   - `ReligiousOrderSuffix` - "OFM" | "SJ" | "OP" | "OSB" | etc.
+
+2. **Utilitários** (`lib/utils/clergy.ts`):
+   - `getRoleLabel()` - Traduz role para português
+   - `getClergyTitle()` - Retorna prefixo ("Pe.", "Mons.")
+   - `formatClergyName()` - "Pe. José da Silva, OFM"
+   - `sortClergyByRole()` - Ordena por hierarquia canônica
+
+3. **Componentes** (`features/churches/clergy/`):
+   - `ClergyCard` - Card com foto, nome, cargo
+   - `ClergyList` - Lista de clérigos da paróquia
+
+4. **Integração**:
+   - Nova seção na página de detalhes (`app/igreja/[slug]/page.tsx`)
