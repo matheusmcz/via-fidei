@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { churches } from "@/data/churches";
+import { ScheduleTabs } from "@/features/churches";
 import { ArrowLeft, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -120,6 +121,14 @@ export default async function ChurchDetailPage({
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Horários e Atividades */}
+          <Card className="mt-6">
+            <CardContent className="p-6 sm:p-8">
+              <h2 className="text-xl font-semibold mb-4">Horários</h2>
+              <ScheduleTabs church={church} />
             </CardContent>
           </Card>
         </div>
