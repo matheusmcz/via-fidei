@@ -2,6 +2,7 @@ import {
   formatRecurrence,
   formatTimeRange,
   getDayName,
+  getEventKey,
   getOrderedDays,
   groupByDay,
 } from "@/lib/utils";
@@ -28,12 +29,15 @@ export function ScheduleDayList({ events }: ScheduleDayListProps) {
               {dayLabel}
             </h4>
             <div className="flex flex-wrap gap-2">
-              {dayEvents.map((event, idx) => {
+              {dayEvents.map((event) => {
                 const timeDisplay = formatTimeRange(event.time, event.endTime);
                 const recurrenceLabel = formatRecurrence(event.recurrence);
 
                 return (
-                  <div key={idx} className="flex items-center gap-1">
+                  <div
+                    key={getEventKey(event)}
+                    className="flex items-center gap-1"
+                  >
                     <span className="inline-flex items-center rounded-md bg-primary/10 px-2.5 py-1 text-sm font-medium text-primary">
                       {timeDisplay}
                     </span>

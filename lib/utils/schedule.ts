@@ -54,9 +54,26 @@ export function getDayNameShort(day: DayOfWeek): string {
 }
 
 /**
+ * Validate time string format (HH:MM)
+ * @returns true if valid, false otherwise
+ */
+export function isValidTime(time: string): boolean {
+  if (!time || typeof time !== "string") return false;
+  const match = time.match(/^([0-1]?\d|2[0-3]):([0-5]\d)$/);
+  return match !== null;
+}
+
+/**
  * Format time for display (e.g., "07:00" → "7h", "18:30" → "18h30")
+ * @param time - Time string in "HH:MM" format (00:00-23:59)
+ * @returns Formatted time string, or the original string if invalid
  */
 export function formatTime(time: string): string {
+  if (!isValidTime(time)) {
+    // Return original string for invalid input to avoid silent failures
+    return time;
+  }
+
   const [hours, minutes] = time.split(":");
   const h = parseInt(hours, 10);
   const m = minutes || "00";
@@ -65,6 +82,16 @@ export function formatTime(time: string): string {
     return `${h}h`;
   }
   return `${h}h${m}`;
+}
+
+/**
+ * Generate a stable unique key for a ScheduleEvent
+ */
+export function getEventKey(event: ScheduleEvent): string {
+  return `${event.dayOfWeek ?? "special"}-${event.time}-${event.recurrence ?? "weekly"}-${event.notes ?? ""}`.replace(
+    /\s+/g,
+    "_",
+  );
 }
 
 /**
