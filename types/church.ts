@@ -10,7 +10,12 @@ export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 /**
  * Clergy role within the church
  */
-export type ClergyRole = "parish-priest" | "vicar" | "deacon" | "administrator";
+export type ClergyRole =
+  | "parish-priest"
+  | "vicar"
+  | "deacon"
+  | "administrator"
+  | "rector";
 
 /**
  * Clergy title prefix
@@ -55,6 +60,34 @@ export interface Clergy {
   endDate?: string;
   /** Short biography */
   bio?: string;
+  /** Social media links */
+  socialLinks?: {
+    whatsapp?: string;
+    instagram?: string;
+    facebook?: string;
+  };
+}
+
+/**
+ * Type of ecclesiastical entity
+ */
+export type ChurchType =
+  | "parish"
+  | "rectory"
+  | "cathedral"
+  | "chapel"
+  | "sanctuary";
+
+/**
+ * Church contact information
+ */
+export interface ChurchContact {
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  instagram?: string;
+  facebook?: string;
+  website?: string;
 }
 
 /**
@@ -103,6 +136,12 @@ export interface Church {
   address: string;
   district: string;
   imageUrl?: string;
+  /** Type of ecclesiastical entity */
+  type?: ChurchType;
+  /** Contact information */
+  contact?: ChurchContact;
+  /** Google Maps URL for location */
+  googleMapsUrl?: string;
   /** Mass schedule */
   masses?: ScheduleEvent[];
   /** Adoration schedule */

@@ -327,6 +327,8 @@ export const churches: Church[] = [
     address:
       "R. João Farias Filho - Tabuleiro do Martins, Maceió - AL, 57081-085",
     district: "Salvador Lira",
+    imageUrl: "/images/sao-paulo-apostolo.jpg",
+    type: "parish",
     masses: [
       // Domingo
       { dayOfWeek: 0, time: "07:00" },
@@ -376,12 +378,14 @@ export const churches: Church[] = [
         role: "parish-priest",
         title: "padre",
         startDate: "2011",
+        imageUrl: "/images/pe-manoel-jose-dos-santos.jpg",
       },
       {
         id: "46-clergy-2",
         name: "Inácio Filho",
         role: "deacon",
         startDate: "2015",
+        imageUrl: "/images/dc-inacio-filho.jpg",
       },
     ],
   },

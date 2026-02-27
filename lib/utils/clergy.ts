@@ -5,6 +5,7 @@ import type { Clergy, ClergyRole, ClergyTitle } from "@/types";
  */
 const ROLE_HIERARCHY: ClergyRole[] = [
   "parish-priest",
+  "rector",
   "administrator",
   "vicar",
   "deacon",
@@ -15,6 +16,7 @@ const ROLE_HIERARCHY: ClergyRole[] = [
  */
 const ROLE_LABELS: Record<ClergyRole, string> = {
   "parish-priest": "Pároco",
+  rector: "Reitor",
   administrator: "Administrador Paroquial",
   vicar: "Vigário",
   deacon: "Diácono",
