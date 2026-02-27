@@ -8,15 +8,101 @@
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 /**
+ * Clergy role within the church
+ */
+export type ClergyRole =
+  | "parish-priest"
+  | "vicar"
+  | "deacon"
+  | "administrator"
+  | "rector";
+
+/**
+ * Clergy title prefix
+ */
+export type ClergyTitle = "padre" | "monsenhor" | "frei" | "dom";
+
+/**
+ * Religious order suffix (e.g., OFM, SJ, OP)
+ * Uses loose string pattern to allow known values with autocomplete while accepting custom strings
+ */
+export type ReligiousOrderSuffix =
+  | "OFM"
+  | "SJ"
+  | "OP"
+  | "OSB"
+  | "OCD"
+  | "CSSR"
+  | "SVD"
+  | "SCJ"
+  | "CM"
+  | "SDB"
+  | (string & {});
+
+/**
+ * A clergy member (priest, deacon, etc.)
+ */
+export interface Clergy {
+  /** Unique identifier */
+  id: string;
+  /** Clergy name */
+  name: string;
+  /** Role in the church */
+  role: ClergyRole;
+  /** Title prefix (Pe., Mons., etc.) */
+  title?: ClergyTitle;
+  /** Religious order suffix (OFM, SJ, etc.) */
+  suffix?: ReligiousOrderSuffix;
+  /** Profile image URL */
+  imageUrl?: string;
+  /** Date when started at this church (year or YYYY-MM-DD) */
+  startDate?: string;
+  /** Date when ended service at this church (year or YYYY-MM-DD). Omit for active clergy. */
+  endDate?: string;
+  /** Short biography */
+  bio?: string;
+  /** Social media links */
+  socialLinks?: {
+    whatsapp?: string;
+    instagram?: string;
+    facebook?: string;
+  };
+}
+
+/**
+ * Type of ecclesiastical entity
+ */
+export type ChurchType =
+  | "parish"
+  | "rectory"
+  | "cathedral"
+  | "chapel"
+  | "sanctuary";
+
+/**
+ * Church contact information
+ */
+export interface ChurchContact {
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  instagram?: string;
+  facebook?: string;
+  website?: string;
+}
+
+/**
  * Common recurrence patterns for church events
+ * Uses loose string pattern to allow known values with autocomplete while accepting custom strings
  */
 export type RecurrenceType =
   | "weekly"
   | "first-friday"
   | "first-saturday"
+  | "first-thursday"
   | "monthly"
   | "biweekly"
-  | string;
+  | (string & {});
 
 /**
  * A scheduled event (mass, adoration, confession, etc.)
@@ -38,6 +124,8 @@ export interface ScheduleEvent {
  * A church activity (Terço, Novena, Catequese, etc.)
  */
 export interface Activity {
+  /** Unique identifier */
+  id: string;
   /** Activity name */
   name: string;
   /** Schedule for this activity */
@@ -53,6 +141,12 @@ export interface Church {
   address: string;
   district: string;
   imageUrl?: string;
+  /** Type of ecclesiastical entity */
+  type?: ChurchType;
+  /** Contact information */
+  contact?: ChurchContact;
+  /** Google Maps URL for location */
+  googleMapsUrl?: string;
   /** Mass schedule */
   masses?: ScheduleEvent[];
   /** Adoration schedule */
@@ -61,4 +155,6 @@ export interface Church {
   confessions?: ScheduleEvent[];
   /** Other activities (Terço, Novena, etc.) */
   activities?: Activity[];
+  /** Clergy members (priests, deacons, etc.) */
+  clergy?: Clergy[];
 }

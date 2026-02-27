@@ -1,6 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { churches } from "@/data/churches";
-import { ScheduleTabs } from "@/features/churches";
+import {
+  ChurchContactSection,
+  ClergyHistory,
+  ClergyList,
+  ScheduleTabs,
+} from "@/features/churches";
 import { ArrowLeft, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -111,16 +116,52 @@ export default async function ChurchDetailPage({
 
               {/* Endereço */}
               <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-base">{church.address}</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {church.district}, Maceió/AL
-                    </p>
+                {church.googleMapsUrl ? (
+                  <a
+                    href={church.googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-3 group"
+                  >
+                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0 group-hover:text-foreground transition-colors" />
+                    <div>
+                      <p className="text-base group-hover:underline group-hover:text-foreground transition-colors">
+                        {church.address}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {church.district}, Maceió/AL
+                      </p>
+                    </div>
+                  </a>
+                ) : (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-base">{church.address}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {church.district}, Maceió/AL
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Contato */}
+          <Card className="mt-6">
+            <CardContent className="p-6 sm:p-8">
+              <h2 className="text-xl font-semibold mb-4">Contato</h2>
+              <ChurchContactSection contact={church.contact} />
+            </CardContent>
+          </Card>
+
+          {/* Clero */}
+          <Card className="mt-6">
+            <CardContent className="p-6 sm:p-8">
+              <h2 className="text-xl font-semibold mb-4">Clero</h2>
+              <ClergyList clergy={church.clergy} />
+              <ClergyHistory clergy={church.clergy} />
             </CardContent>
           </Card>
 

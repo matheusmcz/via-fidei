@@ -327,6 +327,16 @@ export const churches: Church[] = [
     address:
       "R. João Farias Filho - Tabuleiro do Martins, Maceió - AL, 57081-085",
     district: "Salvador Lira",
+    imageUrl: "/images/sao-paulo-apostolo.jpg",
+    type: "parish",
+    googleMapsUrl: "https://maps.app.goo.gl/DawYoxuiC3ABJWgv9",
+    contact: {
+      phone: "+5582999999999",
+      whatsapp: "+5582999999999",
+      email: "paroquia@saopauloapostolo.com.br",
+      instagram: "@avozdoapostolo",
+      facebook: "https://www.facebook.com/avozdoapostolo/?locale=pt_BR",
+    },
     masses: [
       // Domingo
       { dayOfWeek: 0, time: "07:00" },
@@ -359,14 +369,33 @@ export const churches: Church[] = [
     ],
     activities: [
       {
+        id: "46-activity-1",
         name: "RCC",
         schedule: [{ dayOfWeek: 3, time: "19:00" }],
       },
       {
+        id: "46-activity-2",
         name: "Adoração com Segue-me e ECC",
         schedule: [
           { dayOfWeek: 4, time: "19:00", recurrence: "first-thursday" },
         ],
+      },
+    ],
+    clergy: [
+      {
+        id: "46-clergy-1",
+        name: "Manoel José dos Santos",
+        role: "parish-priest",
+        title: "padre",
+        startDate: "2011",
+        imageUrl: "/images/pe-manoel-jose-dos-santos.jpg",
+      },
+      {
+        id: "46-clergy-2",
+        name: "Inácio Filho",
+        role: "deacon",
+        startDate: "2015",
+        imageUrl: "/images/dc-inacio-filho.jpg",
       },
     ],
   },
