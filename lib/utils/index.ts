@@ -1,3 +1,14 @@
+export {
+  formatClergyName,
+  formatClergyTenure,
+  getActiveClergyMembers,
+  getClergyTitle,
+  getPastClergyMembers,
+  getRoleLabel,
+  isActiveClergyMember,
+  sortClergyByRole,
+  sortClergyByStartDate,
+} from "./clergy";
 export { cn } from "./cn";
 export {
   canGroupWeekdays,

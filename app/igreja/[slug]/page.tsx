@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { churches } from "@/data/churches";
-import { ScheduleTabs } from "@/features/churches";
+import { ClergyHistory, ClergyList, ScheduleTabs } from "@/features/churches";
 import { ArrowLeft, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -121,6 +121,15 @@ export default async function ChurchDetailPage({
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Clero */}
+          <Card className="mt-6">
+            <CardContent className="p-6 sm:p-8">
+              <h2 className="text-xl font-semibold mb-4">Clero</h2>
+              <ClergyList clergy={church.clergy} />
+              <ClergyHistory clergy={church.clergy} />
             </CardContent>
           </Card>
 

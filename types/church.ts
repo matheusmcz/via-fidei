@@ -8,6 +8,56 @@
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 /**
+ * Clergy role within the church
+ */
+export type ClergyRole = "parish-priest" | "vicar" | "deacon" | "administrator";
+
+/**
+ * Clergy title prefix
+ */
+export type ClergyTitle = "padre" | "monsenhor" | "frei" | "dom";
+
+/**
+ * Religious order suffix (e.g., OFM, SJ, OP)
+ */
+export type ReligiousOrderSuffix =
+  | "OFM"
+  | "SJ"
+  | "OP"
+  | "OSB"
+  | "OCD"
+  | "CSSR"
+  | "SVD"
+  | "SCJ"
+  | "CM"
+  | "SDB"
+  | string;
+
+/**
+ * A clergy member (priest, deacon, etc.)
+ */
+export interface Clergy {
+  /** Unique identifier */
+  id: string;
+  /** Clergy name */
+  name: string;
+  /** Role in the church */
+  role: ClergyRole;
+  /** Title prefix (Pe., Mons., etc.) */
+  title?: ClergyTitle;
+  /** Religious order suffix (OFM, SJ, etc.) */
+  suffix?: ReligiousOrderSuffix;
+  /** Profile image URL */
+  imageUrl?: string;
+  /** Date when started at this church (year or YYYY-MM-DD) */
+  startDate?: string;
+  /** Date when ended service at this church (year or YYYY-MM-DD). Omit for active clergy. */
+  endDate?: string;
+  /** Short biography */
+  bio?: string;
+}
+
+/**
  * Common recurrence patterns for church events
  */
 export type RecurrenceType =
@@ -61,4 +111,6 @@ export interface Church {
   confessions?: ScheduleEvent[];
   /** Other activities (Terço, Novena, etc.) */
   activities?: Activity[];
+  /** Clergy members (priests, deacons, etc.) */
+  clergy?: Clergy[];
 }

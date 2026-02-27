@@ -369,6 +369,21 @@ export const churches: Church[] = [
         ],
       },
     ],
+    clergy: [
+      {
+        id: "46-clergy-1",
+        name: "Manoel José dos Santos",
+        role: "parish-priest",
+        title: "padre",
+        startDate: "2011",
+      },
+      {
+        id: "46-clergy-2",
+        name: "Inácio Filho",
+        role: "deacon",
+        startDate: "2015",
+      },
+    ],
   },
   {
     id: "47",
