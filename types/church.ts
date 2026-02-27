@@ -24,6 +24,7 @@ export type ClergyTitle = "padre" | "monsenhor" | "frei" | "dom";
 
 /**
  * Religious order suffix (e.g., OFM, SJ, OP)
+ * Uses loose string pattern to allow known values with autocomplete while accepting custom strings
  */
 export type ReligiousOrderSuffix =
   | "OFM"
@@ -36,7 +37,7 @@ export type ReligiousOrderSuffix =
   | "SCJ"
   | "CM"
   | "SDB"
-  | string;
+  | (string & {});
 
 /**
  * A clergy member (priest, deacon, etc.)
@@ -92,14 +93,16 @@ export interface ChurchContact {
 
 /**
  * Common recurrence patterns for church events
+ * Uses loose string pattern to allow known values with autocomplete while accepting custom strings
  */
 export type RecurrenceType =
   | "weekly"
   | "first-friday"
   | "first-saturday"
+  | "first-thursday"
   | "monthly"
   | "biweekly"
-  | string;
+  | (string & {});
 
 /**
  * A scheduled event (mass, adoration, confession, etc.)
@@ -121,6 +124,8 @@ export interface ScheduleEvent {
  * A church activity (Terço, Novena, Catequese, etc.)
  */
 export interface Activity {
+  /** Unique identifier */
+  id: string;
   /** Activity name */
   name: string;
   /** Schedule for this activity */

@@ -88,7 +88,7 @@ export function formatTime(time: string): string {
  * Generate a stable unique key for a ScheduleEvent
  */
 export function getEventKey(event: ScheduleEvent): string {
-  return `${event.dayOfWeek ?? "special"}-${event.time}-${event.recurrence ?? "weekly"}-${event.notes ?? ""}`.replace(
+  return `${event.dayOfWeek ?? "special"}-${event.time}-${event.endTime ?? ""}-${event.recurrence ?? "weekly"}-${event.notes ?? ""}`.replace(
     /\s+/g,
     "_",
   );

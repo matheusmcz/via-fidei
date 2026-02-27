@@ -24,10 +24,10 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 
 **`/features/churches/schedule`** - Horários das igrejas
 
-- `ScheduleTabs.tsx` - Componente de abas (Client Component)
-- `ScheduleDayList.tsx` - Lista de horários por dia
-- `ScheduleEmpty.tsx` - Estado vazio
-- `ActivityList.tsx` - Lista de atividades
+- `schedule-tabs.tsx` - Componente de abas (Client Component)
+- `schedule-day-list.tsx` - Lista de horários por dia
+- `schedule-empty.tsx` - Estado vazio
+- `activity-list.tsx` - Lista de atividades
 
 ### `/components` - Componentes compartilhados
 
@@ -51,7 +51,7 @@ Código auxiliar reutilizável.
   - `formatTimeRange()` - Formata intervalo ("06:30" - "17:30")
   - `getDayName()` - Nome do dia em português
   - `groupByDay()` - Agrupa eventos por dia da semana
-  - `getRecurrenceLabel()` - Label de recorrência ("1ª Sexta-feira do mês")
+  - `formatRecurrence()` - Label de recorrência ("1ª Sexta-feira do mês")
   - `isValidTime()` - Valida formato HH:MM
   - `getEventKey()` - Gera chave única para React
 - Outras helpers conforme necessário

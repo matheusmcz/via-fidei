@@ -9,7 +9,7 @@ export function ActivityList({ activities }: ActivityListProps) {
   return (
     <div className="space-y-6">
       {activities.map((activity) => (
-        <div key={activity.name} className="space-y-2">
+        <div key={activity.id} className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold">{activity.name}</h4>
           </div>

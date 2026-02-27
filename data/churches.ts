@@ -361,10 +361,12 @@ export const churches: Church[] = [
     ],
     activities: [
       {
+        id: "46-activity-1",
         name: "RCC",
         schedule: [{ dayOfWeek: 3, time: "19:00" }],
       },
       {
+        id: "46-activity-2",
         name: "Adoração com Segue-me e ECC",
         schedule: [
           { dayOfWeek: 4, time: "19:00", recurrence: "first-thursday" },
