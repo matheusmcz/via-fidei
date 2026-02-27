@@ -324,8 +324,72 @@ export const churches: Church[] = [
     id: "46",
     name: "São Paulo Apóstolo",
     slug: "sao-paulo-apostolo",
-    address: "Rua Principal, s/n",
+    address:
+      "R. João Farias Filho - Tabuleiro do Martins, Maceió - AL, 57081-085",
     district: "Salvador Lira",
+    imageUrl: "/images/sao-paulo-apostolo.jpg",
+    type: "parish",
+    masses: [
+      // Domingo
+      { dayOfWeek: 0, time: "07:00" },
+      { dayOfWeek: 0, time: "19:00" },
+      // Terça
+      { dayOfWeek: 2, time: "18:00", notes: "Bênção e distribuição dos pães" },
+      // Quinta
+      { dayOfWeek: 4, time: "18:00" },
+      // Sábado
+      { dayOfWeek: 6, time: "19:00" },
+      // Primeira sexta-feira do mês
+      {
+        dayOfWeek: 5,
+        time: "18:00",
+        recurrence: "first-friday",
+        notes: "Sagrado Coração de Jesus",
+      },
+      // Todo dia 20 do mês
+      {
+        time: "17:00",
+        recurrence: "monthly-20",
+        notes: "Romeiros de Pe. Cícero",
+      },
+    ],
+    adorations: [{ dayOfWeek: 4, time: "06:30", endTime: "17:30" }],
+    confessions: [
+      { dayOfWeek: 0, time: "06:30" },
+      { dayOfWeek: 0, time: "18:30" },
+      { dayOfWeek: 6, time: "18:30" },
+    ],
+    activities: [
+      {
+        id: "46-activity-1",
+        name: "RCC",
+        schedule: [{ dayOfWeek: 3, time: "19:00" }],
+      },
+      {
+        id: "46-activity-2",
+        name: "Adoração com Segue-me e ECC",
+        schedule: [
+          { dayOfWeek: 4, time: "19:00", recurrence: "first-thursday" },
+        ],
+      },
+    ],
+    clergy: [
+      {
+        id: "46-clergy-1",
+        name: "Manoel José dos Santos",
+        role: "parish-priest",
+        title: "padre",
+        startDate: "2011",
+        imageUrl: "/images/pe-manoel-jose-dos-santos.jpg",
+      },
+      {
+        id: "46-clergy-2",
+        name: "Inácio Filho",
+        role: "deacon",
+        startDate: "2015",
+        imageUrl: "/images/dc-inacio-filho.jpg",
+      },
+    ],
   },
   {
     id: "47",
