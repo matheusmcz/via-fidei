@@ -1,6 +1,7 @@
 export { ChurchCard } from "./church-card";
 export { ChurchList } from "./church-list";
 export { ClergyCard, ClergyHistory, ClergyList } from "./clergy";
+export { ChurchContactSection } from "./contact";
 export { PageHeader } from "./page-header";
 export { Pagination } from "./pagination";
 export { PaginationControls } from "./pagination-controls";

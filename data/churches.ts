@@ -329,6 +329,14 @@ export const churches: Church[] = [
     district: "Salvador Lira",
     imageUrl: "/images/sao-paulo-apostolo.jpg",
     type: "parish",
+    googleMapsUrl: "https://maps.app.goo.gl/DawYoxuiC3ABJWgv9",
+    contact: {
+      phone: "+5582999999999",
+      whatsapp: "+5582999999999",
+      email: "paroquia@saopauloapostolo.com.br",
+      instagram: "@avozdoapostolo",
+      facebook: "https://www.facebook.com/avozdoapostolo/?locale=pt_BR",
+    },
     masses: [
       // Domingo
       { dayOfWeek: 0, time: "07:00" },
