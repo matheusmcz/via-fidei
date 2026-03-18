@@ -4,7 +4,7 @@ import { cn, getPastClergyMembers, sortClergyByStartDate } from "@/lib/utils";
 import type { Clergy } from "@/types";
 import { ChevronDown, History } from "lucide-react";
 import { useState } from "react";
-import { ClergyCard } from "./clergy-card";
+import { ClergyCardWithModal } from "./clergy-card-with-modal";
 
 interface ClergyHistoryProps {
   clergy?: Clergy[];
@@ -46,7 +46,7 @@ export function ClergyHistory({ clergy }: ClergyHistoryProps) {
       {isExpanded && (
         <div className="mt-4 space-y-3">
           {sortedPastClergy.map((member) => (
-            <ClergyCard key={member.id} clergy={member} />
+            <ClergyCardWithModal key={member.id} clergy={member} />
           ))}
         </div>
       )}
