@@ -389,6 +389,11 @@ export const churches: Church[] = [
         title: "padre",
         startDate: "2011",
         imageUrl: "/images/pe-manoel-jose-dos-santos.jpg",
+        bio: "Ordenado em 2005 pela Arquidiocese de Maceió. Pároco da Paróquia São Paulo Apóstolo desde 2011, dedica-se especialmente à pastoral familiar e à formação de lideranças.",
+        socialLinks: {
+          instagram: "@pe.manoeljose",
+          facebook: "https://facebook.com/pe.manoeljose",
+        },
       },
       {
         id: "46-clergy-2",
@@ -396,6 +401,10 @@ export const churches: Church[] = [
         role: "deacon",
         startDate: "2015",
         imageUrl: "/images/dc-inacio-filho.jpg",
+        bio: "Diácono permanente ordenado em 2015. Atua na coordenação da pastoral social e no acompanhamento das comunidades de base.",
+        socialLinks: {
+          whatsapp: "+5582999888777",
+        },
       },
     ],
   },

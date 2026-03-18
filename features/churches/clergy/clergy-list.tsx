@@ -1,7 +1,9 @@
+"use client";
+
 import { getActiveClergyMembers, sortClergyByRole } from "@/lib/utils";
 import type { Clergy } from "@/types";
 import { Users } from "lucide-react";
-import { ClergyCard } from "./clergy-card";
+import { ClergyCardWithModal } from "./clergy-card-with-modal";
 
 interface ClergyListProps {
   clergy?: Clergy[];
@@ -33,7 +35,7 @@ export function ClergyList({ clergy }: ClergyListProps) {
   return (
     <div className="space-y-3">
       {sortedClergy.map((member) => (
-        <ClergyCard key={member.id} clergy={member} />
+        <ClergyCardWithModal key={member.id} clergy={member} />
       ))}
     </div>
   );
