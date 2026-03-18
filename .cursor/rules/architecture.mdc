@@ -1,0 +1,29 @@
+---
+description: Regras de arquitetura e estrutura de pastas do projeto
+alwaysApply: true
+---
+
+# Arquitetura — Organização por Features
+
+O projeto é organizado por **domínio/feature**, não por tipo de arquivo.
+
+## Estrutura de Pastas
+
+| Pasta | Responsabilidade |
+|-------|-----------------|
+| `app/` | Rotas, layouts e páginas (App Router) |
+| `features/` | Módulos de domínio (componentes, hooks, lógica agrupados) |
+| `components/ui/` | Exclusivo para componentes shadcn/ui |
+| `components/` | Componentes compartilhados (ex: footer) |
+| `lib/utils/` | Funções utilitárias reutilizáveis |
+| `types/` | Tipos TypeScript compartilhados |
+| `data/` | Dados estáticos versionados |
+
+## Regras
+
+- Novas funcionalidades devem ser criadas dentro de `features/` em pastas com kebab-case
+- Cada feature deve ter um `index.ts` com barrel exports
+- Não criar pastas por tipo (ex: `hooks/`, `services/`) na raiz — agrupar dentro da feature
+- `components/ui/` é reservado para shadcn/ui — não colocar componentes customizados ali
+- Utilitários de domínio ficam em `lib/utils/` (ex: `clergy.ts`, `schedule.ts`)
+- Tipos de domínio ficam em `types/church.ts` e são re-exportados via `types/index.ts`

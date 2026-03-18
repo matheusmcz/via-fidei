@@ -1,0 +1,31 @@
+---
+description: Regras de estilização com Tailwind CSS e shadcn/ui
+alwaysApply: false
+---
+
+# Estilização
+
+## Tailwind CSS
+
+- Usar exclusivamente Tailwind utility classes — sem CSS inline, CSS Modules ou styled-components
+- Abordagem **mobile-first**: estilos base para mobile, breakpoints para telas maiores (`sm:`, `md:`, `lg:`)
+- Usar `cn()` de `@/lib/utils` para merge condicional de classes
+
+## Tema e Dark Mode
+
+- Variáveis de cor definidas em `app/globals.css` como CSS custom properties
+- Dark mode via classe CSS (`dark:`) — configurado em `tailwind.config.ts`
+- Sempre testar componentes em ambos os temas (claro e escuro)
+
+## shadcn/ui
+
+- Componentes instalados via `npx shadcn@latest add [component]`
+- Ficam em `components/ui/` — evitar modificações diretas nesses arquivos
+- Customizar via props `className` com `cn()`
+- Estilo configurado: `new-york`, cor base: `neutral`
+
+## Boas Práticas
+
+- Não usar valores arbitrários do Tailwind quando existir token equivalente
+- Manter consistência visual com os componentes existentes
+- Imagens devem manter proporção 16:9 quando aplicável

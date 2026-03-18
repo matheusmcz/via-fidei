@@ -1,0 +1,34 @@
+---
+description: Padrões para componentes React no projeto
+globs: "**/*.tsx"
+alwaysApply: false
+---
+
+# Padrões de Componentes React
+
+## Estrutura do Componente
+
+1. Imports
+2. Interface de props (quando aplicável)
+3. Componente como named export
+4. Subcomponentes ou helpers (se necessário)
+
+## Regras
+
+- Componentes funcionais apenas — sem class components
+- Usar **named exports** (não default exports)
+- Nomes de componentes e arquivos em PascalCase (ex: `ChurchCard.tsx`)
+- Arquivos de componente em kebab-case quando multi-palavra (ex: `clergy-card.tsx`)
+- Chaves React estáveis — nunca usar índice de array como key
+
+## Estilização
+
+- Usar Tailwind utility classes com abordagem mobile-first
+- Usar `cn()` de `@/lib/utils` para classes condicionais
+- Componentes shadcn/ui importados de `@/components/ui/`
+
+## Composição
+
+- Preferir composição de componentes ao invés de props complexas
+- Extrair custom hooks para lógica reutilizável (prefixo `use`)
+- Hooks de feature ficam dentro da pasta da feature (ex: `features/churches/use-church-filters.ts`)

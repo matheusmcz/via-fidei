@@ -1,0 +1,31 @@
+---
+description: Regras para gerenciamento de dados estáticos das igrejas
+globs: "data/**/*.ts"
+alwaysApply: false
+---
+
+# Gerenciamento de Dados
+
+## Fonte de Dados
+
+- Todos os dados ficam em `data/churches.ts` como array estático tipado
+- Não há backend, API REST ou banco de dados — cadastro manual
+- Fonte: [Hora da Missa](https://www.horadamissa.com)
+
+## Tipagem
+
+- Cada igreja deve seguir a interface `Church` de `@/types`
+- Campos obrigatórios: `id`, `name`, `slug`, `address`, `district`
+- Campos opcionais: `imageUrl`, `contact`, `clergy`, `masses`, `adorations`, `confessions`, `activities`
+
+## Validações
+
+- IDs únicos para cada igreja, clérigo e evento
+- Slugs gerados via `slugify()` de `@/lib/utils` (consistentes com a rota `/igreja/[slug]`)
+- Horários no formato `HH:MM` (validar com `isValidTime()`)
+- Dias da semana como `DayOfWeek` (0 = domingo, 6 = sábado)
+
+## Consumo
+
+- Importar dados diretamente nos Server Components (`import { churches } from "@/data/churches"`)
+- Não usar `fetch()` ou `getServerSideProps` para dados locais

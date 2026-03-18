@@ -1,0 +1,32 @@
+---
+description: Convenções TypeScript para o projeto Via Fidei
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Convenções TypeScript
+
+## Tipagem
+
+- Tipagem forte obrigatória — nunca usar `any`
+- Usar `interface` para objetos e shapes
+- Usar `type` para unions, intersections e aliases
+- Tipar explicitamente retornos de funções utilitárias
+
+## Nomenclatura
+
+- Tipos e interfaces: PascalCase (`Church`, `ClergyRole`)
+- Funções e variáveis: camelCase (`formatClergyName`, `getRoleLabel`)
+- Constantes: UPPER_SNAKE_CASE quando fizer sentido semântico
+
+## Organização
+
+- Tipos compartilhados ficam em `types/` com re-export via `types/index.ts`
+- Tipos de domínio já definidos em `@/types/church.ts`: `Church`, `Clergy`, `ScheduleEvent`, `Activity`, `DayOfWeek`, `RecurrenceType`
+- Não duplicar tipos — importar de `@/types`
+
+## Path Aliases
+
+- Usar `@/` para imports absolutos (configurado em `tsconfig.json`)
+- Preferir imports absolutos para módulos fora da feature atual
+- Imports relativos são aceitáveis dentro da mesma feature

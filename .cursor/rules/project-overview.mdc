@@ -1,0 +1,33 @@
+---
+description: Contexto geral do projeto Via Fidei
+alwaysApply: true
+---
+
+# Via Fidei — Visão Geral
+
+Via Fidei é uma aplicação web para encontrar igrejas católicas em Maceió/AL, Brasil.
+
+## Stack
+
+- **Framework**: Next.js 15 (App Router) com Turbopack
+- **UI**: React 19, Tailwind CSS 3, shadcn/ui (estilo new-york)
+- **Linguagem**: TypeScript (strict mode)
+- **Deploy**: Vercel
+- **Analytics**: Vercel Analytics
+
+## Dados
+
+- Dados estáticos em `data/churches.ts` — não há backend, API ou banco de dados
+- Fonte dos dados: [Hora da Missa](https://www.horadamissa.com)
+
+## Idioma
+
+- Todo conteúdo voltado ao usuário é em **português brasileiro**
+- Mensagens de commit em português
+- Documentação do projeto em português
+
+## Referências
+
+- Arquitetura: @ARCHITECTURE.md
+- QA: @docs/QA.md
+- shadcn/ui: @docs/SHADCN.md
