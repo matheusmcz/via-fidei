@@ -170,10 +170,50 @@ Arquivos públicos servidos diretamente.
 
 ## Próximos Passos
 
-### Cadastro de clérigos
+### Dados e entidades
+
+#### Cadastro de clérigos
 
 Alimentar os dados de clérigos em `data/clergy.ts` e no campo `clergy[]` das respectivas igrejas em `data/churches.ts`. A infraestrutura (tipos, componentes, páginas) já está implementada.
 
-### Migração de imagens para cloud (V2)
+#### Histórico do clero nas igrejas
+
+Novo campo `clergyHistory?: Clergy[]` na interface `Church` (separado de `clergy[]`) para armazenar clérigos que já passaram pela paróquia. `clergyHistory[]` **substitui** a lógica atual de filtrar por `endDate` em `clergy[]` -- clérigos ativos ficam em `clergy[]`, históricos ficam em `clergyHistory[]`. A função `getPastClergyMembers()` e a filtragem por `endDate` serão removidas. O componente `ClergyHistory` passará a consumir diretamente `church.clergyHistory` em vez de filtrar `church.clergy`. Modelo dual: dados também em `data/clergy.ts` (com `endDate` preenchido). Sessão dedicada na página de detalhes da igreja.
+
+#### Grupos, Movimentos e Pastorais
+
+Nova interface `ChurchMinistry` (`{ id: string; label: string; acronym?: string }`) e `ChurchMinistries` com três chaves: `groups?: ChurchMinistry[]`, `movements?: ChurchMinistry[]`, `pastorals?: ChurchMinistry[]`. Novo campo `ministries?: ChurchMinistries` na interface `Church`. Novo arquivo `data/ministries.ts` com lista independente de todos os grupos/movimentos/pastorais cadastrados (modelo dual, igual clérigos). Ministries se diferencia de `activities` (que são eventos/rituais religiosos com horário) -- ministries são grupos de pessoas que se unem para servir a um propósito pastoral/comunitário, sem horário vinculado. UI: nova sessão na página de detalhes com três subdivisões, cada uma exibindo tags. Exemplos: ECC, Segue-me, QGC, JM, IAM, Pastoral Familiar, Terço dos Homens, Legião de Maria, MESCes.
+
+### Contribuição do usuário
+
+#### Sugestão de correção/contribuição
+
+Botão discreto na página de detalhes da igreja e no modal de detalhes do clérigo com texto semelhante a "Algum dado errado ou deseja contribuir com outras informações? Clique aqui". Modal com formulário contendo: referência da igreja/clérigo (preenchida automaticamente), assunto, descrição e email de contato. Inicialmente sem backend: `console.log` dos dados + toast de confirmação para verificação.
+
+#### Sugestão de cadastro
+
+Botão abaixo do filtro na listagem de igrejas ("Não encontrou a igreja que queria?") e na listagem de clérigos ("Não encontrou o padre que queria?"). Modal com formulário contendo campos da entidade correspondente (com tipos corretos). Campos mínimos obrigatórios para submissão (ex: nome e bairro para igreja, nome e função para clérigo). Inicialmente sem backend: `console.log` dos dados + toast de confirmação para verificação.
+
+### Área administrativa
+
+#### Rota /admin (autenticação mockada)
+
+Rota escondida `/admin` (sem links na UI). Login com credenciais mockadas (hardcoded). Contexto de autenticação (React Context ou cookie) para persistir sessão. Ao estar logado como admin, campos de dados nas páginas de detalhes ganham botão de edição (ícone de lápis). Fluxo de edição inline: lápis -> input pré-preenchido -> check (salvar) / X (cancelar). Inicialmente altera apenas os arrays mockados em memória -- **alterações se perdem ao recarregar a página** (sem persistência até haver backend).
+
+#### Cadastro de igrejas (admin)
+
+Tela acessível apenas para admin. Dois métodos de cadastro: formulário com todos os campos da entidade `Church` (incluindo seleção de clérigos já cadastrados) com submissão apenas com mínimo obrigatório preenchido; ou campo de texto para colar JSON, com validação automática de formato e tipos contra a interface `Church`. Inicialmente adiciona ao array mockado.
+
+#### Cadastro de clérigos (admin)
+
+Tela acessível apenas para admin. Dois métodos de cadastro: formulário com todos os campos da entidade `Clergy` (incluindo seleção de paróquia) com submissão apenas com mínimo obrigatório preenchido; ou campo de texto para colar JSON, com validação automática. Inicialmente adiciona aos arrays mockados (tanto `clergy.ts` quanto `church.clergy[]`).
+
+#### Cadastro de grupos, movimentos e pastorais (admin)
+
+Tela acessível apenas para admin. Formulário simples: select para tipo (Grupo/Movimento/Pastoral), campo nome e campo sigla (ex: tipo: Movimento, nome: Encontro de Casais com Cristo, sigla: ECC). Inicialmente adiciona ao array mockado em `data/ministries.ts`.
+
+### Infraestrutura
+
+#### Migração de imagens para cloud (V2)
 
 Atualmente as imagens ficam em `/public/images/`. Em V2, considerar migração para storage em nuvem (Vercel Blob, Supabase Storage, Cloudinary).
