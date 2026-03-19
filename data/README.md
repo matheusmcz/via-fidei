@@ -23,6 +23,7 @@ export const churches: Church[] = [
     confessions?: ScheduleEvent[]; // Horários de confissão
     activities?: Activity[];       // Atividades (Terço, Novena, Catequese, etc.)
     clergy?: Clergy[];             // Clérigos vinculados (dados completos inline)
+    ministries?: ChurchMinistries; // Grupos, movimentos e pastorais
   }
 ];
 ```
@@ -104,7 +105,9 @@ const districts = [...new Set(churches.map((c) => c.district))].sort();
 }
 ```
 
-## Modelo dual de clérigos
+## Modelo dual de dados
+
+### Clérigos
 
 Os dados de clérigos existem em **dois lugares** intencionalmente:
 
@@ -112,6 +115,48 @@ Os dados de clérigos existem em **dois lugares** intencionalmente:
 2. **Em `data/clergy.ts`** -- como entidades independentes com `churchId`. A página `/clero` usa este array para listagem e busca.
 
 Ao cadastrar um novo clérigo, os dados devem ser adicionados nos dois arquivos.
+
+### Ministérios (grupos, movimentos e pastorais)
+
+Os dados de ministérios seguem o mesmo modelo dual:
+
+1. **Dentro de `churches.ts`** -- em `Church.ministries`, com os objetos completos organizados por categoria (`groups`, `movements`, `pastorals`). A página de detalhes da igreja usa diretamente `church.ministries`.
+2. **Em `data/ministries.ts`** -- como listas independentes exportadas por categoria (`groups`, `movements`, `pastorals`).
+
+Ao cadastrar um novo ministério, os dados devem ser adicionados nos dois arquivos.
+
+## Arquivo: `data/ministries.ts`
+
+Contém a lista completa de grupos, movimentos e pastorais como entidades independentes, organizados por categoria.
+
+### Estrutura dos dados
+
+```typescript
+import type { ChurchMinistry } from "@/types";
+
+export const groups: ChurchMinistry[] = [
+  {
+    id: string;       // UUID único
+    label: string;    // Nome completo (e.g., "Renovação Carismática Católica")
+    acronym?: string; // Sigla opcional (e.g., "RCC")
+  }
+];
+
+export const movements: ChurchMinistry[] = [...];
+export const pastorals: ChurchMinistry[] = [...];
+```
+
+### Adicionando novos ministérios
+
+```typescript
+{
+  id: "uuid-gerado",
+  label: "Nome do Ministério",
+  acronym: "SIGLA",
+}
+```
+
+IDs devem ser UUIDs únicos. Gerar via `uuidgen` ou equivalente.
 
 ## Arquivo: `data/clergy.ts`
 

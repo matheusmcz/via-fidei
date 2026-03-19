@@ -2,6 +2,8 @@ export type {
   Activity,
   Church,
   ChurchContact,
+  ChurchMinistries,
+  ChurchMinistry,
   ChurchType,
   Clergy,
   ClergyRole,

@@ -4,6 +4,7 @@ import {
   ChurchContactSection,
   ClergyHistory,
   ClergyList,
+  MinistriesSection,
   ScheduleTabs,
 } from "@/features/churches";
 import { ArrowLeft, MapPin } from "lucide-react";
@@ -170,6 +171,16 @@ export default async function ChurchDetailPage({
             <CardContent className="p-6 sm:p-8">
               <h2 className="text-xl font-semibold mb-4">Horários</h2>
               <ScheduleTabs church={church} />
+            </CardContent>
+          </Card>
+
+          {/* Grupos, Movimentos e Pastorais */}
+          <Card className="mt-6">
+            <CardContent className="p-6 sm:p-8">
+              <h2 className="text-xl font-semibold mb-4">
+                Grupos, Movimentos e Pastorais
+              </h2>
+              <MinistriesSection ministries={church.ministries} />
             </CardContent>
           </Card>
         </div>

@@ -48,6 +48,11 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 
 - `church-contact-section.tsx` - Seção de contato (telefone, WhatsApp, redes sociais)
 
+**`/features/churches/ministries`** - Grupos, movimentos e pastorais
+
+- `ministries-section.tsx` - Seção principal com subdivisões por categoria (Grupos, Movimentos, Pastorais)
+- `ministry-list.tsx` - Lista de ministérios renderizados como tags/badges
+
 **`/features/clergy`** - Feature de listagem de clérigos (página `/clero`)
 
 - `clergy-page-list.tsx` - Lista com busca e filtro alfabético (Client Component)
@@ -125,15 +130,18 @@ Tipos e interfaces compartilhados.
   - `ClergyRole` - Cargo ("parish-priest", "vicar", "deacon", "administrator", "rector")
   - `ClergyTitle` - Título ("padre", "monsenhor", "frei", "dom")
   - `ReligiousOrderSuffix` - Ordem religiosa ("OFM", "SJ", "OP", "OSB", etc.)
+  - `ChurchMinistry` - Grupo, movimento ou pastoral (`{ id, label, acronym? }`)
+  - `ChurchMinistries` - Ministérios por categoria (`{ groups?, movements?, pastorals? }`)
 - `index.ts` - Re-exporta todos os tipos
 
 ### `/data` - Dados estáticos
 
 Arquivos TS com dados versionados.
 
-- `churches.ts` - 55 igrejas reais de Maceió/AL (fonte: [Hora da Missa](https://www.horadamissa.com)). Cada igreja pode ter `clergy[]` com dados completos inline.
+- `churches.ts` - 55 igrejas reais de Maceió/AL (fonte: [Hora da Missa](https://www.horadamissa.com)). Cada igreja pode ter `clergy[]` e `ministries` com dados completos inline.
 - `clergy.ts` - Clérigos como entidades independentes, vinculados a igrejas por `churchId`. Usado pela página `/clero` para listagem e busca.
-- **Modelo dual**: dados de clérigos existem nos dois arquivos. Ao cadastrar, adicionar em ambos.
+- `ministries.ts` - Grupos, movimentos e pastorais como entidades independentes. Lista completa de todos os ministérios cadastrados, organizados por categoria (`groups`, `movements`, `pastorals`).
+- **Modelo dual**: dados de clérigos e ministérios existem nos dois arquivos (entidade independente + inline na igreja). Ao cadastrar, adicionar em ambos.
 - Sem CRUD, cadastro manual
 
 ### `/public` - Assets estáticos
@@ -179,10 +187,6 @@ Alimentar os dados de clérigos em `data/clergy.ts` e no campo `clergy[]` das re
 #### Histórico do clero nas igrejas
 
 Novo campo `clergyHistory?: Clergy[]` na interface `Church` (separado de `clergy[]`) para armazenar clérigos que já passaram pela paróquia. `clergyHistory[]` **substitui** a lógica atual de filtrar por `endDate` em `clergy[]` -- clérigos ativos ficam em `clergy[]`, históricos ficam em `clergyHistory[]`. A função `getPastClergyMembers()` e a filtragem por `endDate` serão removidas. O componente `ClergyHistory` passará a consumir diretamente `church.clergyHistory` em vez de filtrar `church.clergy`. Modelo dual: dados também em `data/clergy.ts` (com `endDate` preenchido). Sessão dedicada na página de detalhes da igreja.
-
-#### Grupos, Movimentos e Pastorais
-
-Nova interface `ChurchMinistry` (`{ id: string; label: string; acronym?: string }`) e `ChurchMinistries` com três chaves: `groups?: ChurchMinistry[]`, `movements?: ChurchMinistry[]`, `pastorals?: ChurchMinistry[]`. Novo campo `ministries?: ChurchMinistries` na interface `Church`. Novo arquivo `data/ministries.ts` com lista independente de todos os grupos/movimentos/pastorais cadastrados (modelo dual, igual clérigos). Ministries se diferencia de `activities` (que são eventos/rituais religiosos com horário) -- ministries são grupos de pessoas que se unem para servir a um propósito pastoral/comunitário, sem horário vinculado. UI: nova sessão na página de detalhes com três subdivisões, cada uma exibindo tags. Exemplos: ECC, Segue-me, QGC, JM, IAM, Pastoral Familiar, Terço dos Homens, Legião de Maria, MESCes.
 
 ### Contribuição do usuário
 

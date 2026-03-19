@@ -137,6 +137,30 @@ export interface Activity {
 }
 
 /**
+ * A group, movement, or pastoral within a church
+ */
+export interface ChurchMinistry {
+  /** Unique identifier */
+  id: string;
+  /** Full name (e.g., "Encontro de Casais com Cristo") */
+  label: string;
+  /** Optional acronym (e.g., "ECC") */
+  acronym?: string;
+}
+
+/**
+ * Church ministries organized by category
+ */
+export interface ChurchMinistries {
+  /** Community/prayer groups (e.g., RCC, Terço dos Homens) */
+  groups?: ChurchMinistry[];
+  /** Ecclesial movements (e.g., ECC, Segue-me, Cursilho) */
+  movements?: ChurchMinistry[];
+  /** Parish pastorals (e.g., Pastoral Familiar, Pastoral da Criança) */
+  pastorals?: ChurchMinistry[];
+}
+
+/**
  * Clergy member enriched with church info (for listing pages)
  */
 export interface ClergyWithChurch extends Clergy {
@@ -167,4 +191,6 @@ export interface Church {
   activities?: Activity[];
   /** Clergy members (priests, deacons, etc.) */
   clergy?: Clergy[];
+  /** Groups, movements, and pastorals */
+  ministries?: ChurchMinistries;
 }
