@@ -32,7 +32,7 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 **`/features/churches/schedule`** - Horários das igrejas
 
 - `schedule-tabs.tsx` - Componente de abas (Client Component)
-- `schedule-day-list.tsx` - Lista de horários por dia
+- `schedule-day-list.tsx` - Lista de horários por dia em accordion (shadcn/ui Accordion). Cada dia é um item colapsável com contagem de horários; o primeiro dia vem expandido por padrão. **Layout anterior**: lista vertical simples com todos os dias empilhados (`space-y-4`) e badges de horário em `flex-wrap` -- sem colapsável, todo conteúdo visível de uma vez.
 - `schedule-empty.tsx` - Estado vazio
 - `activity-list.tsx` - Lista de atividades
 
