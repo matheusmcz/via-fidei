@@ -30,6 +30,14 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link
+                  href="/clero"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clero
+                </Link>
+              </li>
+              <li>
                 <a
                   href="https://arquidiocesedemaceio.org.br"
                   target="_blank"

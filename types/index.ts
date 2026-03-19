@@ -6,6 +6,7 @@ export type {
   Clergy,
   ClergyRole,
   ClergyTitle,
+  ClergyWithChurch,
   DayOfWeek,
   RecurrenceType,
   ReligiousOrderSuffix,

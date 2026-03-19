@@ -9,8 +9,11 @@ O projeto segue uma arquitetura organizada por **features/domínios**, não por 
 Contém rotas, layouts e páginas da aplicação.
 
 - `layout.tsx` - Layout raiz com metadados e fontes
-- `page.tsx` - Página inicial
+- `page.tsx` - Página inicial (listagem de igrejas com busca e filtro)
 - `globals.css` - Estilos globais e variáveis CSS do Tailwind
+- `igreja/[slug]/page.tsx` - Página de detalhes da igreja (SSR com `generateStaticParams`)
+- `igreja/[slug]/not-found.tsx` - Página 404 customizada
+- `clero/page.tsx` - Listagem geral de clérigos com filtro alfabético
 
 ### `/features` - Features do domínio
 
@@ -18,9 +21,13 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 
 **`/features/churches`** - Feature de igrejas
 
-- Componentes específicos (cards, listas)
-- Hooks de busca e filtros
-- Utilitários do domínio
+- `church-card.tsx` - Card de igreja para listagem
+- `church-list.tsx` - Lista de igrejas com busca e filtros (Client Component)
+- `use-church-filters.ts` - Hook de busca, filtro por bairro e paginação
+- `page-header.tsx` - Header da página inicial
+- `pagination.tsx` - Componente de paginação
+- `pagination-controls.tsx` - Controles de paginação
+- `per-page-filter.tsx` - Filtro de itens por página
 
 **`/features/churches/schedule`** - Horários das igrejas
 
@@ -28,6 +35,30 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 - `schedule-day-list.tsx` - Lista de horários por dia
 - `schedule-empty.tsx` - Estado vazio
 - `activity-list.tsx` - Lista de atividades
+
+**`/features/churches/clergy`** - Clero das igrejas
+
+- `clergy-card.tsx` - Card básico de clérigo
+- `clergy-card-with-modal.tsx` - Card com modal de detalhes
+- `clergy-detail-modal.tsx` - Modal com informações detalhadas do clérigo
+- `clergy-list.tsx` - Lista de clérigos ativos da paróquia
+- `clergy-history.tsx` - Histórico de clérigos anteriores
+
+**`/features/churches/contact`** - Contato das igrejas
+
+- `church-contact-section.tsx` - Seção de contato (telefone, WhatsApp, redes sociais)
+
+**`/features/clergy`** - Feature de listagem de clérigos (página `/clero`)
+
+- `clergy-page-list.tsx` - Lista com busca e filtro alfabético (Client Component)
+- `clergy-list-card.tsx` - Card compacto de clérigo
+- `clergy-page-modal.tsx` - Modal com detalhes e link para paróquia
+- `use-clergy-filters.ts` - Hook de busca e filtro por letra inicial
+
+**`/features/theme`** - Tema da aplicação
+
+- `theme-provider.tsx` - Provider de tema claro/escuro
+- `theme-toggle.tsx` - Botão de alternância de tema
 
 ### `/components` - Componentes compartilhados
 
@@ -49,12 +80,33 @@ Código auxiliar reutilizável.
 - `schedule.ts` - Utilitários de horários:
   - `formatTime()` - Formata hora ("18:00" → "18h")
   - `formatTimeRange()` - Formata intervalo ("06:30" - "17:30")
-  - `getDayName()` - Nome do dia em português
+  - `getDayName()` / `getDayNameShort()` - Nome do dia em português
   - `groupByDay()` - Agrupa eventos por dia da semana
+  - `getOrderedDays()` - Dias ordenados (domingo primeiro)
+  - `canGroupWeekdays()` - Verifica se pode agrupar dias úteis
   - `formatRecurrence()` - Label de recorrência ("1ª Sexta-feira do mês")
   - `isValidTime()` - Valida formato HH:MM
   - `getEventKey()` - Gera chave única para React
-- Outras helpers conforme necessário
+- `clergy.ts` - Utilitários de clero:
+  - `getRoleLabel()` - Traduz role para português ("Pároco", "Vigário")
+  - `getClergyTitle()` - Retorna prefixo ("Pe.", "Mons.", "Fr.", "Dom")
+  - `formatClergyName()` - Nome completo formatado ("Pe. José da Silva, OFM")
+  - `sortClergyByRole()` - Ordena por hierarquia canônica
+  - `isActiveClergyMember()` / `getActiveClergyMembers()` - Filtra clérigos ativos
+  - `getPastClergyMembers()` - Filtra clérigos anteriores
+  - `formatClergyTenure()` - Período de atuação ("2021 - Atual")
+  - `sortClergyByStartDate()` - Ordena por data de início
+  - `getClergyForChurch()` - Filtra clérigos de uma igreja específica por churchId
+  - `getAllClergyWithChurch()` - Enriquece clérigos com dados da igreja (join por churchId)
+  - `sortClergyByName()` - Ordena alfabeticamente por nome
+  - `getClergyInitials()` - Letras iniciais únicas dos nomes
+  - `filterClergyByInitial()` - Filtra por letra inicial (ignora acentos)
+- `contact.ts` - Utilitários de contato:
+  - `formatPhoneForDisplay()` - Formata telefone ("(82) 99999-9999")
+  - `formatPhoneForHref()` - Telefone para href (apenas dígitos)
+  - `formatInstagramHandle()` / `getInstagramUrl()` - Instagram
+  - `formatFacebookName()` / `getFacebookUrl()` - Facebook
+  - `getWebsiteUrl()` / `formatWebsiteForDisplay()` - Website
 
 ### `/types` - Definições de tipos TypeScript
 
@@ -62,27 +114,36 @@ Tipos e interfaces compartilhados.
 
 - `church.ts` - Tipos principais:
   - `Church` - Interface da igreja
+  - `ChurchType` - Tipo de entidade ("parish", "rectory", "cathedral", "chapel", "sanctuary")
+  - `ChurchContact` - Informações de contato
   - `ScheduleEvent` - Evento de horário (missa, adoração, confissão)
   - `Activity` - Atividade com horários
   - `DayOfWeek` - Tipo literal (0-6)
   - `RecurrenceType` - Tipos de recorrência
+  - `Clergy` - Interface do clérigo
+  - `ClergyWithChurch` - Clérigo enriquecido com dados da igreja (para listagens)
+  - `ClergyRole` - Cargo ("parish-priest", "vicar", "deacon", "administrator", "rector")
+  - `ClergyTitle` - Título ("padre", "monsenhor", "frei", "dom")
+  - `ReligiousOrderSuffix` - Ordem religiosa ("OFM", "SJ", "OP", "OSB", etc.)
 - `index.ts` - Re-exporta todos os tipos
 
 ### `/data` - Dados estáticos
 
-Arquivos JSON ou TS com dados versionados.
+Arquivos TS com dados versionados.
 
-- Dados das igrejas (futuro)
+- `churches.ts` - 55 igrejas reais de Maceió/AL (fonte: [Hora da Missa](https://www.horadamissa.com)). Cada igreja pode ter `clergy[]` com dados completos inline.
+- `clergy.ts` - Clérigos como entidades independentes, vinculados a igrejas por `churchId`. Usado pela página `/clero` para listagem e busca.
+- **Modelo dual**: dados de clérigos existem nos dois arquivos. Ao cadastrar, adicionar em ambos.
 - Sem CRUD, cadastro manual
 
 ### `/public` - Assets estáticos
 
 Arquivos públicos servidos diretamente.
 
-**`/public/images`** - Imagens
+**`/public/images`** - Imagens (estrutura flat)
 
-- `placeholder.svg` - Placeholder padrão
-- `/churches` - Fotos das igrejas (futuro)
+- `via-fidei-logo.png` - Logo e imagem padrão (placeholder)
+- Imagens de igrejas e clérigos por slug (ex: `sao-paulo-apostolo.jpg`, `pe-manoel-jose-dos-santos.jpg`)
 
 ## Fluxo de dados (SSR)
 
@@ -109,25 +170,10 @@ Arquivos públicos servidos diretamente.
 
 ## Próximos Passos
 
-### Feature de Clero
+### Cadastro de clérigos
 
-Implementação planejada:
+Alimentar os dados de clérigos em `data/clergy.ts` e no campo `clergy[]` das respectivas igrejas em `data/churches.ts`. A infraestrutura (tipos, componentes, páginas) já está implementada.
 
-1. **Tipos** (`types/church.ts`):
-   - `Clergy` - Interface do clérigo
-   - `ClergyRole` - "parish-priest" | "vicar" | "deacon" | "administrator"
-   - `ClergyTitle` - "padre" | "monsenhor" | "frei" | "dom"
-   - `ReligiousOrderSuffix` - "OFM" | "SJ" | "OP" | "OSB" | etc.
+### Migração de imagens para cloud (V2)
 
-2. **Utilitários** (`lib/utils/clergy.ts`):
-   - `getRoleLabel()` - Traduz role para português
-   - `getClergyTitle()` - Retorna prefixo ("Pe.", "Mons.")
-   - `formatClergyName()` - "Pe. José da Silva, OFM"
-   - `sortClergyByRole()` - Ordena por hierarquia canônica
-
-3. **Componentes** (`features/churches/clergy/`):
-   - `ClergyCard` - Card com foto, nome, cargo
-   - `ClergyList` - Lista de clérigos da paróquia
-
-4. **Integração**:
-   - Nova seção na página de detalhes (`app/igreja/[slug]/page.tsx`)
+Atualmente as imagens ficam em `/public/images/`. Em V2, considerar migração para storage em nuvem (Vercel Blob, Supabase Storage, Cloudinary).

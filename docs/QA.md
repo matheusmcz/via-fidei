@@ -55,7 +55,7 @@ Peça ao Copilot: "run QA tests" ou "testar a aplicação"
 | ---------------- | -------------------------------------- | --------------- |
 | `/`              | Listagem de igrejas com busca e filtro | ✅ Implementado |
 | `/igreja/[slug]` | Página de detalhes da igreja           | ✅ Implementado |
-| `/clero`         | Listagem de clérigos                   | ❌ Pendente     |
+| `/clero`         | Listagem de clérigos                   | ✅ Implementado |
 
 ---
 

@@ -47,6 +47,8 @@ export interface Clergy {
   id: string;
   /** Clergy name */
   name: string;
+  /** Church this clergy belongs to (references Church.id) */
+  churchId: string;
   /** Role in the church */
   role: ClergyRole;
   /** Title prefix (Pe., Mons., etc.) */
@@ -132,6 +134,14 @@ export interface Activity {
   schedule: ScheduleEvent[];
   /** Optional description */
   description?: string;
+}
+
+/**
+ * Clergy member enriched with church info (for listing pages)
+ */
+export interface ClergyWithChurch extends Clergy {
+  churchName: string;
+  churchSlug: string;
 }
 
 export interface Church {

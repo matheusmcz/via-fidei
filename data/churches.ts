@@ -385,6 +385,7 @@ export const churches: Church[] = [
       {
         id: "46-clergy-1",
         name: "Manoel José dos Santos",
+        churchId: "46",
         role: "parish-priest",
         title: "padre",
         startDate: "2011",
@@ -398,6 +399,7 @@ export const churches: Church[] = [
       {
         id: "46-clergy-2",
         name: "Inácio Filho",
+        churchId: "46",
         role: "deacon",
         startDate: "2015",
         imageUrl: "/images/dc-inacio-filho.jpg",
