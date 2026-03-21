@@ -1,6 +1,6 @@
 ---
-description: Regras para gerenciamento de dados estáticos das igrejas
-globs: "data/**/*.ts"
+description: Regras para gerenciamento de dados (Supabase + arquivos legados)
+globs: "data/**/*.ts,lib/supabase/**/*.ts"
 alwaysApply: false
 ---
 
@@ -8,24 +8,35 @@ alwaysApply: false
 
 ## Fonte de Dados
 
-- Todos os dados ficam em `data/churches.ts` como array estático tipado
-- Não há backend, API REST ou banco de dados — cadastro manual
-- Fonte: [Hora da Missa](https://www.horadamissa.com)
+- Dados armazenados no **Supabase** (PostgreSQL)
+- Queries em `lib/supabase/queries/` — consumidas pelos Server Components
+- Arquivos em `data/*.ts` são legados (mantidos apenas para seed)
+- Fonte original: [Hora da Missa](https://www.horadamissa.com)
+
+## Supabase
+
+- Leituras públicas (sem sessão / `generateStaticParams`): `lib/supabase/public.ts` (`createPublicClient`)
+- Client com cookies (Auth, rotas protegidas): `lib/supabase/server.ts`
+- Client para Client Components: `lib/supabase/client.ts`
+- Middleware de sessão: `middleware.ts` na raiz + `lib/supabase/middleware.ts`
+- Migrations SQL: `supabase/migrations/`
+- Scripts: `scripts/seed.ts`, `scripts/load-env.ts`
 
 ## Tipagem
 
-- Cada igreja deve seguir a interface `Church` de `@/types`
-- Campos obrigatórios: `id`, `name`, `slug`, `address`, `district`
-- Campos opcionais: `imageUrl`, `contact`, `clergy`, `masses`, `adorations`, `confessions`, `activities`
+- Tipos de domínio em `types/church.ts` (mantidos como interface principal)
+- Queries retornam tipos do domínio (transformação feita nas funções de query)
+
+## Consumo nos Server Components
+
+- Usar `await getChurches()`, `await getChurchBySlug(slug)`, etc.
+- **Não** importar diretamente de `data/churches.ts` nas páginas
+- ISR com `revalidate = 60` para cache
 
 ## Validações
 
-- IDs únicos para cada igreja, clérigo e evento
-- Slugs gerados via `slugify()` de `@/lib/utils` (consistentes com a rota `/igreja/[slug]`)
+- IDs são UUIDs gerados pelo Supabase
+- Slugs gerados via `slugify()` de `@/lib/utils`
 - Horários no formato `HH:MM` (validar com `isValidTime()`)
 - Dias da semana como `DayOfWeek` (0 = domingo, 6 = sábado)
-
-## Consumo
-
-- Importar dados diretamente nos Server Components (`import { churches } from "@/data/churches"`)
-- Não usar `fetch()` ou `getServerSideProps` para dados locais
+- RLS (Row Level Security) controla acesso por papel (admin/editor)

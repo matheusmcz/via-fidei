@@ -12,13 +12,15 @@ Via Fidei é uma aplicação web para encontrar igrejas católicas em Maceió/AL
 - **Framework**: Next.js 15 (App Router) com Turbopack
 - **UI**: React 19, Tailwind CSS 3, shadcn/ui (estilo new-york)
 - **Linguagem**: TypeScript (strict mode)
+- **Dados**: [Supabase](https://supabase.com/) (PostgreSQL, Auth, RLS) — queries em `lib/supabase/queries/`
 - **Deploy**: Vercel
 - **Analytics**: Vercel Analytics
 
 ## Dados
 
-- Dados estáticos em `data/churches.ts` — não há backend, API ou banco de dados
-- Fonte dos dados: [Hora da Missa](https://www.horadamissa.com)
+- **Produção:** tabelas no Supabase; variáveis em `.env.local` (ver `.env.example`)
+- **Legado:** `data/*.ts` mantidos só para referência e `npm run seed`
+- Fonte original / enriquecimento: [Hora da Missa](https://www.horadamissa.com)
 
 ## Idioma
 

@@ -48,7 +48,7 @@ export interface Clergy {
   /** Clergy name */
   name: string;
   /** Church this clergy belongs to (references Church.id) */
-  churchId: string;
+  churchId?: string;
   /** Role in the church */
   role: ClergyRole;
   /** Title prefix (Pe., Mons., etc.) */

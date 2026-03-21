@@ -31,5 +31,7 @@ alwaysApply: false
 
 ## Dados
 
-- Importar dados estáticos de `@/data/churches` diretamente nos Server Components
-- Não usar `fetch()` para dados locais
+- Consumir dados via queries do Supabase em `@/lib/supabase/queries`
+- Usar `await getChurches()`, `await getChurchBySlug(slug)`, etc. nos Server Components
+- ISR com `export const revalidate = 60` para cache de dados
+- Arquivos em `data/*.ts` são legados (mantidos apenas para seed)
