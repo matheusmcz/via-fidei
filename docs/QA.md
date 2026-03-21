@@ -17,6 +17,7 @@ Este documento define os casos de teste, comportamentos esperados e fluxos de va
 
 - Node.js 18+
 - npm ou pnpm instalado
+- Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→008) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../.env.example))
 
 ### Iniciar o servidor de desenvolvimento
 
@@ -51,11 +52,18 @@ Peça ao Copilot: "run QA tests" ou "testar a aplicação"
 
 ## Páginas da Aplicação
 
-| Rota             | Descrição                              | Status          |
-| ---------------- | -------------------------------------- | --------------- |
-| `/`              | Listagem de igrejas com busca e filtro | ✅ Implementado |
-| `/igreja/[slug]` | Página de detalhes da igreja           | ✅ Implementado |
-| `/clero`         | Listagem de clérigos                   | ✅ Implementado |
+| Rota               | Descrição                                      | Status          |
+| ------------------ | ---------------------------------------------- | --------------- |
+| `/`                | Listagem de igrejas com busca e filtro         | ✅ Implementado |
+| `/igreja/[slug]`   | Página de detalhes da igreja (dados Supabase) | ✅ Implementado |
+| `/clero`           | Listagem de clérigos                           | ✅ Implementado |
+| `/login`           | Login (email/senha Supabase; rota escondida)   | ✅ Implementado |
+| `/admin`           | Dashboard admin (só usuário `admin` em `profiles`) | ✅ Implementado |
+| `/admin/usuarios`  | Lista de editores e atalho para novo           | ✅ Implementado |
+| `/admin/usuarios/[id]` | Detalhe do editor + vínculos com igrejas   | ✅ Implementado |
+| `/admin/usuarios/novo` | Criar editor                               | ✅ Implementado |
+
+**Auth:** criar usuários em **Supabase → Authentication** e ajustar `profiles.role` / `editor_churches` conforme o caso. Rotas `/admin/*` exigem `role = admin` ativo.
 
 ---
 
