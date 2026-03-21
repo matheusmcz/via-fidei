@@ -9,6 +9,7 @@ import {
   MinistriesSection,
   ScheduleTabs,
 } from "@/features/churches";
+import { isSupabasePublicConfigured } from "@/lib/supabase/env";
 import { getChurchBySlug, getChurchSlugs } from "@/lib/supabase/queries";
 import { ArrowLeft, MapPin } from "lucide-react";
 import Image from "next/image";
@@ -24,6 +25,14 @@ interface ChurchDetailPageProps {
 }
 
 export async function generateStaticParams() {
+  if (!isSupabasePublicConfigured()) {
+    if (process.env.VERCEL) {
+      throw new Error(
+        "Build na Vercel: configure URL e chave pública do Supabase (NEXT_PUBLIC_* ou SUPABASE_URL / SUPABASE_ANON_KEY da integração) em Settings → Environment Variables. Se o deploy for Preview (PR), marque o mesmo para o ambiente Preview — não só Production."
+      );
+    }
+    return [];
+  }
   const slugs = await getChurchSlugs();
   return slugs.map((slug) => ({ slug }));
 }

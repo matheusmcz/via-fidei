@@ -93,6 +93,10 @@ npm run dev
 
 Acesse [http://localhost:3000](http://localhost:3000) no navegador.
 
+`npm run build` e o deploy na **Vercel** precisam da URL e da chave pública do Supabase. Você pode usar `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (ou `NEXT_PUBLIC_SUPABASE_ANON_KEY`), **ou** os nomes da integração Vercel↔Supabase (`SUPABASE_URL`, `SUPABASE_ANON_KEY` / `SUPABASE_PUBLISHABLE_KEY`) — o projeto faz fallback e o `next.config.ts` espelha para o bundle do cliente.
+
+**Importante:** na Vercel, marque **Production** e **Preview** para as mesmas variáveis. Se aparecerem só em Production, o build de **deploys de PR (Preview)** continua sem essas variáveis e falha.
+
 Após criar o projeto no Supabase, execute as migrations SQL em `supabase/migrations/` (ordem `001` → `008`) no **SQL Editor**, depois:
 
 ```bash
