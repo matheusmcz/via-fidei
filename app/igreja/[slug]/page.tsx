@@ -1,16 +1,21 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { churches } from "@/data/churches";
 import {
+  AdminChurchLink,
   ChurchContactSection,
   ClergyHistory,
   ClergyList,
+  EditableSection,
+  EditIndicator,
   MinistriesSection,
   ScheduleTabs,
 } from "@/features/churches";
+import { getChurchBySlug, getChurchSlugs } from "@/lib/supabase/queries";
 import { ArrowLeft, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
+export const revalidate = 60;
 
 interface ChurchDetailPageProps {
   params: Promise<{
@@ -19,14 +24,13 @@ interface ChurchDetailPageProps {
 }
 
 export async function generateStaticParams() {
-  return churches.map((church) => ({
-    slug: church.slug,
-  }));
+  const slugs = await getChurchSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: ChurchDetailPageProps) {
   const { slug } = await params;
-  const church = churches.find((c) => c.slug === slug);
+  const church = await getChurchBySlug(slug);
 
   if (!church) {
     return {
@@ -67,7 +71,7 @@ export default async function ChurchDetailPage({
   params,
 }: ChurchDetailPageProps) {
   const { slug } = await params;
-  const church = churches.find((c) => c.slug === slug);
+  const church = await getChurchBySlug(slug);
 
   if (!church) {
     notFound();
@@ -108,11 +112,12 @@ export default async function ChurchDetailPage({
 
             {/* Informações */}
             <CardContent className="p-6 sm:p-8 space-y-6">
-              {/* Nome */}
-              <div>
+              <div className="flex items-start justify-between">
                 <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
                   {church.name}
+                  <EditIndicator churchId={church.id} />
                 </h1>
+                <AdminChurchLink churchId={church.id} />
               </div>
 
               {/* Endereço */}
@@ -152,25 +157,60 @@ export default async function ChurchDetailPage({
           {/* Contato */}
           <Card className="mt-6">
             <CardContent className="p-6 sm:p-8">
-              <h2 className="text-xl font-semibold mb-4">Contato</h2>
-              <ChurchContactSection contact={church.contact} />
+              <h2 className="text-xl font-semibold mb-4">
+                Contato
+                <EditIndicator churchId={church.id} />
+              </h2>
+              <EditableSection
+                churchId={church.id}
+                hasContent={!!church.contact}
+                emptyMessage="Nenhuma informação de contato disponível."
+                addLabel="Adicionar contato"
+              >
+                <ChurchContactSection contact={church.contact} />
+              </EditableSection>
             </CardContent>
           </Card>
 
           {/* Clero */}
           <Card className="mt-6">
             <CardContent className="p-6 sm:p-8">
-              <h2 className="text-xl font-semibold mb-4">Clero</h2>
-              <ClergyList clergy={church.clergy} />
-              <ClergyHistory clergy={church.clergy} />
+              <h2 className="text-xl font-semibold mb-4">
+                Clero
+                <EditIndicator churchId={church.id} />
+              </h2>
+              <EditableSection
+                churchId={church.id}
+                hasContent={!!church.clergy && church.clergy.length > 0}
+                emptyMessage="Nenhum clérigo cadastrado."
+                addLabel="Adicionar clérigo"
+              >
+                <ClergyList clergy={church.clergy} />
+                <ClergyHistory clergy={church.clergy} />
+              </EditableSection>
             </CardContent>
           </Card>
 
           {/* Horários e Atividades */}
           <Card className="mt-6">
             <CardContent className="p-6 sm:p-8">
-              <h2 className="text-xl font-semibold mb-4">Horários</h2>
-              <ScheduleTabs church={church} />
+              <h2 className="text-xl font-semibold mb-4">
+                Horários
+                <EditIndicator churchId={church.id} />
+              </h2>
+              <EditableSection
+                churchId={church.id}
+                hasContent={
+                  !!(church.masses?.length ||
+                    church.adorations?.length ||
+                    church.confessions?.length ||
+                    church.activities?.length)
+                }
+                emptyMessage="Nenhum horário cadastrado."
+                addLabel="Adicionar horários"
+              >
+                <ScheduleTabs church={church} />
+              </EditableSection>
             </CardContent>
           </Card>
 
@@ -179,8 +219,16 @@ export default async function ChurchDetailPage({
             <CardContent className="p-6 sm:p-8">
               <h2 className="text-xl font-semibold mb-4">
                 Grupos, Movimentos e Pastorais
+                <EditIndicator churchId={church.id} />
               </h2>
-              <MinistriesSection ministries={church.ministries} />
+              <EditableSection
+                churchId={church.id}
+                hasContent={!!church.ministries}
+                emptyMessage="Nenhum grupo, movimento ou pastoral cadastrado."
+                addLabel="Adicionar ministério"
+              >
+                <MinistriesSection ministries={church.ministries} />
+              </EditableSection>
             </CardContent>
           </Card>
         </div>
