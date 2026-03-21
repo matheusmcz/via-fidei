@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export default async function AdminLayout({
@@ -34,20 +35,23 @@ export default async function AdminLayout({
             <div className="flex items-center gap-4">
               <h1 className="text-lg font-semibold">Via Fidei — Admin</h1>
               <nav className="flex gap-4 text-sm text-muted-foreground">
-                <a href="/admin" className="hover:text-foreground transition-colors">
+                <Link href="/admin" className="hover:text-foreground transition-colors">
                   Dashboard
-                </a>
-                <a href="/admin/usuarios" className="hover:text-foreground transition-colors">
+                </Link>
+                <Link
+                  href="/admin/usuarios"
+                  className="hover:text-foreground transition-colors"
+                >
                   Editores
-                </a>
+                </Link>
               </nav>
             </div>
-            <a
+            <Link
               href="/"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Voltar ao site
-            </a>
+            </Link>
           </div>
         </div>
       </header>

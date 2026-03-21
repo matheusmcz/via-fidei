@@ -15,7 +15,7 @@ Este documento define os casos de teste, comportamentos esperados e fluxos de va
 
 ### Pré-requisitos
 
-- Node.js 18+
+- Node.js 24.x (ver `package.json` → `engines` e `.nvmrc`)
 - npm ou pnpm instalado
 - Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→008) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../.env.example))
 

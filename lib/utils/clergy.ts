@@ -178,6 +178,10 @@ export function getAllClergyWithChurch(
 
   return clergyMembers
     .filter(isActiveClergyMember)
+    .filter(
+      (c): c is Clergy & { churchId: string } =>
+        typeof c.churchId === "string" && c.churchId.length > 0,
+    )
     .map((clergy) => {
       const church = churchMap.get(clergy.churchId);
       return {

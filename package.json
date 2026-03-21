@@ -24,7 +24,7 @@
     "typescript"
   ],
   "engines": {
-    "node": ">=18.18.0",
+    "node": "24.x",
     "npm": ">=9.0.0"
   },
   "scripts": {
@@ -54,7 +54,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@types/node": "^22",
+    "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.17",

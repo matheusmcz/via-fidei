@@ -69,7 +69,7 @@ Via Fidei é uma aplicação web desenvolvida para facilitar a busca de igrejas 
 
 ### Pré-requisitos
 
-- Node.js 18.19+ ou 20+
+- **Node.js 24.x** (definido em `engines` e `.nvmrc`; Vercel usa a mesma faixa)
 - npm ou yarn
 
 ### Clone e instale
