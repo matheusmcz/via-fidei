@@ -18,6 +18,7 @@ Este documento define os casos de teste, comportamentos esperados e fluxos de va
 - Node.js 24.x (ver `package.json` → `engines` e `.nvmrc`)
 - npm ou pnpm instalado
 - Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→008) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../.env.example))
+- **Build / Vercel:** URL e chave pública do Supabase disponíveis no ambiente do deploy (Production **e** Preview se houver PRs). Ver [ARCHITECTURE.md](../ARCHITECTURE.md) (seção Supabase + Vercel) e [README](../README.md) (instalação)
 
 ### Iniciar o servidor de desenvolvimento
 

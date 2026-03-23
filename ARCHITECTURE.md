@@ -1,5 +1,44 @@
 # Estrutura do Projeto
 
+## Visão geral da arquitetura
+
+Via Fidei é um app **Next.js 15 (App Router)** com dados em **Supabase** (PostgreSQL + Auth + RLS). Não há backend próprio fora do que o Next expõe (Server Components, Server Actions) e a API REST do Supabase.
+
+```mermaid
+flowchart LR
+  subgraph browser [Browser]
+    CC[Client Components]
+    CC --> BC[lib/supabase/client.ts]
+  end
+
+  subgraph next [Next.js servidor]
+    RSC[Server Components / rotas]
+    SA[Server Actions]
+    GSP[generateStaticParams]
+    RSC --> PC[lib/supabase/public.ts]
+    SA --> SC[lib/supabase/server.ts]
+    GSP --> PC
+    MW[middleware.ts] --> SMW[lib/supabase/middleware.ts]
+  end
+
+  subgraph supa [Supabase]
+    PG[(PostgreSQL + RLS)]
+    AUTH[Auth]
+  end
+
+  BC --> API[PostgREST / Auth]
+  PC --> API
+  SC --> API
+  SMW --> AUTH
+  API --> PG
+```
+
+- **Páginas públicas** (home, `/igreja/[slug]`, `/clero`): leitura via **`createPublicClient()`** — sem `cookies()`, compatível com build estático e RLS como role `anon`.
+- **Área autenticada** (`/login`, `/admin`, Server Actions): **`createServerClient()`** com cookies — JWT do usuário nas políticas RLS.
+- **Interação no cliente** (AuthProvider, formulários admin que usam cliente): **`createBrowserClient()`** — mesma URL e chave pública do projeto.
+
+---
+
 ## Stack e dados (Supabase)
 
 Resumo do que está em produção hoje:
@@ -7,15 +46,44 @@ Resumo do que está em produção hoje:
 | Camada | Descrição |
 |--------|-----------|
 | **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](supabase/migrations/) (`001`–`008`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). |
-| **Chaves** | Padrão atual do dashboard: [`NEXT_PUBLIC_SUPABASE_URL`](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs), `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (cliente); `SUPABASE_SERVICE_ROLE_KEY` só no servidor / seed. [Documentação de API keys](https://supabase.com/docs/guides/api/api-keys). Durante a transição, a anon JWT legada ainda pode ser usada como fallback (`NEXT_PUBLIC_SUPABASE_ANON_KEY`). |
+| **Chaves públicas** | URL + chave **publishable** ou **anon** (JWT) para o cliente. Resolução central em [`lib/supabase/env.ts`](lib/supabase/env.ts) — ver subseção **Variáveis de ambiente (Supabase + Vercel)** abaixo. `SUPABASE_SERVICE_ROLE_KEY` **apenas** servidor / `npm run seed` ([API keys](https://supabase.com/docs/guides/api/api-keys)). |
 | **Auth** | Supabase Auth + cookies (`@supabase/ssr`); [`middleware.ts`](middleware.ts) na raiz renova a sessão; [`features/auth/`](features/auth/) expõe `AuthProvider` e `useAuth`. |
-| **Leitura pública** | [`lib/supabase/public.ts`](lib/supabase/public.ts) — cliente só com publishable key, **sem** `cookies()`. Usado em `lib/supabase/queries/` para listagens e detalhes (compatível com `generateStaticParams` e RLS `anon`). |
-| **Sessão no servidor** | [`lib/supabase/server.ts`](lib/supabase/server.ts) — `createServerClient` com cookies (login, `/admin`, ações que precisam do JWT do usuário). |
-| **Cliente browser** | [`lib/supabase/client.ts`](lib/supabase/client.ts) — `createBrowserClient`. |
-| **Seed** | [`scripts/seed.ts`](scripts/seed.ts) + [`scripts/load-env.ts`](scripts/load-env.ts) — `npm run seed` popula o banco a partir de `data/*.ts` (requer `SUPABASE_SERVICE_ROLE_KEY`). |
-| **Dados em TS** | Arquivos em [`data/`](data/) não são mais importados pelas páginas; servem de fonte para o seed e documentação histórica. |
+| **Leitura pública** | [`lib/supabase/public.ts`](lib/supabase/public.ts) — `createClient` do `@supabase/supabase-js` só com chave pública, **sem** `cookies()`. Usado em [`lib/supabase/queries/`](lib/supabase/queries/) (listagens, detalhes, `generateStaticParams`). |
+| **Sessão no servidor** | [`lib/supabase/server.ts`](lib/supabase/server.ts) — `createServerClient` com cookies (login, `/admin`, Server Actions). |
+| **Cliente browser** | [`lib/supabase/client.ts`](lib/supabase/client.ts) — `createBrowserClient` (`@supabase/ssr`). |
+| **Middleware** | [`lib/supabase/middleware.ts`](lib/supabase/middleware.ts) — usado pelo [`middleware.ts`](middleware.ts) na raiz (refresh de sessão). |
+| **Seed** | [`scripts/seed.ts`](scripts/seed.ts) + [`scripts/load-env.ts`](scripts/load-env.ts) — `npm run seed` popula o banco a partir de `data/*.ts` (requer `SUPABASE_SERVICE_ROLE_KEY` + URL resolvível por `getSupabaseUrl()`). |
+| **Dados em TS** | Arquivos em [`data/`](data/) não são importados pelas páginas; servem de fonte para o seed e referência. |
 
-ISR: `export const revalidate = 60` nas páginas que consomem Supabase.
+**ISR:** `export const revalidate = 60` nas páginas que listam dados do Supabase.
+
+### Variáveis de ambiente (Supabase + Vercel)
+
+O Next.js só injeta no **bundle do browser** variáveis com prefixo `NEXT_PUBLIC_*`. A **integração oficial Vercel ↔ Supabase** costuma criar também `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_PUBLISHABLE_KEY` (sem esse prefixo).
+
+| Necessidade | Variáveis aceitas (ordem de preferência) |
+|-------------|------------------------------------------|
+| URL do projeto | `NEXT_PUBLIC_SUPABASE_URL` → fallback `SUPABASE_URL` |
+| Chave pública (API) | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` → `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `SUPABASE_PUBLISHABLE_KEY` → `SUPABASE_ANON_KEY` |
+| Privilegiada (seed, bypass RLS) | `SUPABASE_SERVICE_ROLE_KEY` (nunca `NEXT_PUBLIC_`) |
+
+[`next.config.ts`](next.config.ts) espelha no build os valores `SUPABASE_*` para `NEXT_PUBLIC_*` quando só a integração preenche os nomes sem prefixo — assim **`createBrowserClient`** e o restante do código continuam funcionando no cliente.
+
+**Deploy na Vercel:** marque as variáveis para **Production** e **Preview** (deploys de PR). Se estiverem só em Production, o build de Preview falha por ausência de URL/chave no ambiente.
+
+**Local:** copie [`.env.example`](.env.example) para `.env.local`. O `.env.local` não é enviado ao Git; na Vercel as variáveis vêm do painel ou da integração.
+
+### Integração com o código
+
+| Arquivo | Papel |
+|---------|--------|
+| [`lib/supabase/env.ts`](lib/supabase/env.ts) | `getSupabaseUrl()`, `getSupabasePublishableKey()`, `getSupabaseServiceRoleKey()`, `isSupabasePublicConfigured()` |
+| [`lib/supabase/public.ts`](lib/supabase/public.ts) | Cliente anônimo para queries públicas (sem sessão) |
+| [`lib/supabase/server.ts`](lib/supabase/server.ts) | Cliente com cookies (sessão) |
+| [`lib/supabase/client.ts`](lib/supabase/client.ts) | Cliente no browser |
+| [`lib/supabase/queries/churches.ts`](lib/supabase/queries/churches.ts) | `getChurches`, `getChurchBySlug`, `getChurchSlugs` |
+| [`lib/supabase/queries/clergy.ts`](lib/supabase/queries/clergy.ts) | `getAllClergyWithChurch` |
+| [`supabase/migrations/*.sql`](supabase/migrations/) | Schema + RLS (`008_rls_policies.sql`) |
 
 ---
 
@@ -194,16 +262,7 @@ Arquivos públicos servidos diretamente.
 
 ### `/lib/supabase` - Integração com Supabase
 
-- `env.ts` - Variáveis conforme [quickstart Next.js + Supabase](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs): `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (fallback opcional: anon JWT legada); `SUPABASE_SERVICE_ROLE_KEY` para scripts privilegiados
-- `public.ts` - Client só com publishable key, sem cookies (queries públicas, `generateStaticParams`)
-- `client.ts` - Client para Client Components (`createBrowserClient`)
-- `server.ts` - Client para Server Components/Actions (`createServerClient` com cookies — Auth e rotas que precisam da sessão)
-- `middleware.ts` (em `lib/supabase/`) - Helper usado pelo [`middleware.ts`](middleware.ts) na raiz do projeto
-- `queries/churches.ts` - Queries de igrejas (`getChurches`, `getChurchBySlug`, `getChurchSlugs`)
-- `queries/clergy.ts` - Queries de clérigos (`getAllClergyWithChurch`)
-- `queries/index.ts` - Barrel exports
-
-**Variáveis (`.env.local`):** ver [`.env.example`](.env.example) — no mínimo `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; para `npm run seed`, também `SUPABASE_SERVICE_ROLE_KEY`. Detalhes: [API keys](https://supabase.com/docs/guides/api/api-keys).
+Papel de cada arquivo, variáveis e fallbacks da integração Vercel: ver as seções **Stack e dados (Supabase)** e **Integração com o código** no início deste documento.
 
 ### `/supabase` - Migrations SQL
 
@@ -226,10 +285,11 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 ## Fluxo de dados
 
 1. Dados no **Supabase** (PostgreSQL); acesso controlado por **RLS** (políticas em `008_rls_policies.sql`).
-2. **Leituras públicas** (home, detalhe da igreja, clero): `lib/supabase/public.ts` + `queries/*` — sem `cookies()`, role `anon` nas políticas.
-3. **Sessão autenticada**: `lib/supabase/server.ts` (cookies) — login, `/admin`, Server Actions que precisam do usuário.
-4. **ISR** com `revalidate = 60` nas páginas que consomem Supabase.
-5. **Cliente**: `features/churches` com busca/filtro/paginação em `useState` após hidratação.
+2. **Variáveis** carregadas em build/runtime conforme [`lib/supabase/env.ts`](lib/supabase/env.ts); [`next.config.ts`](next.config.ts) replica `SUPABASE_*` → `NEXT_PUBLIC_*` para o bundle do browser quando necessário.
+3. **Leituras públicas** (home, detalhe da igreja, clero): `lib/supabase/public.ts` + `queries/*` — sem `cookies()`, role `anon` nas políticas. `generateStaticParams` em `/igreja/[slug]` usa o mesmo cliente público.
+4. **Sessão autenticada**: `lib/supabase/server.ts` (cookies) — login, `/admin`, Server Actions; **`middleware.ts`** na raiz renova tokens antes das rotas.
+5. **ISR** com `revalidate = 60` nas páginas que consomem Supabase.
+6. **UI com estado local**: `features/churches` com busca/filtro/paginação em `useState` após hidratação (dados já vindos do servidor).
 
 ## Convenções de código
 

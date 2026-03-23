@@ -15,6 +15,7 @@ alwaysApply: false
 
 ## Supabase
 
+- Variáveis: `lib/supabase/env.ts` — `NEXT_PUBLIC_*` ou fallbacks `SUPABASE_*` (integração Vercel); `next.config.ts` espelha para o cliente
 - Leituras públicas (sem sessão / `generateStaticParams`): `lib/supabase/public.ts` (`createPublicClient`)
 - Client com cookies (Auth, rotas protegidas): `lib/supabase/server.ts`
 - Client para Client Components: `lib/supabase/client.ts`
