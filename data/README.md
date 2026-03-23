@@ -4,6 +4,10 @@
 
 Os dados da aplicação são armazenados no **Supabase** (PostgreSQL). As páginas consomem dados via queries em `lib/supabase/queries/` (cliente público em `lib/supabase/public.ts`, sem cookies — compatível com `generateStaticParams` e RLS `anon`).
 
+### Variáveis de ambiente
+
+A resolução de URL e chave pública está centralizada em [`lib/supabase/env.ts`](../lib/supabase/env.ts): aceita `NEXT_PUBLIC_SUPABASE_*` **ou** os nomes da integração Vercel↔Supabase (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, etc.). O [`next.config.ts`](../next.config.ts) espelha `SUPABASE_*` para `NEXT_PUBLIC_*` no build do cliente. Para **seed** e operações privilegiadas, use `SUPABASE_SERVICE_ROLE_KEY` (nunca exponha com prefixo público).
+
 ### Aplicar o schema
 
 1. No [Supabase Dashboard](https://supabase.com/dashboard) → **SQL Editor**, execute os arquivos em `supabase/migrations/` **na ordem numérica** (`001_profiles.sql` … `008_rls_policies.sql`).
@@ -31,7 +35,7 @@ As migrations SQL estão em `supabase/migrations/` e devem ser executadas na ord
 
 ### Seed
 
-O script `scripts/seed.ts` migra os dados dos arquivos estáticos legados para o Supabase. Requer `NEXT_PUBLIC_SUPABASE_URL` e **`SUPABASE_SERVICE_ROLE_KEY`**. Carrega `.env.local` automaticamente.
+O script `scripts/seed.ts` migra os dados dos arquivos estáticos legados para o Supabase. Requer URL resolvível (`NEXT_PUBLIC_SUPABASE_URL` ou `SUPABASE_URL`) e **`SUPABASE_SERVICE_ROLE_KEY`**. Carrega `.env.local` automaticamente via `scripts/load-env.ts`.
 
 ```bash
 npm run seed

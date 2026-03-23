@@ -3,8 +3,8 @@
  *
  * Uso: npm run seed
  *
- * Requer no .env.local:
- * - NEXT_PUBLIC_SUPABASE_URL
+ * Requer no .env.local (ou variáveis equivalentes):
+ * - URL: NEXT_PUBLIC_SUPABASE_URL ou SUPABASE_URL (ver lib/supabase/env.ts)
  * - SUPABASE_SERVICE_ROLE_KEY
  */
 
@@ -23,7 +23,7 @@ try {
 } catch (e) {
   console.error(
     (e as Error).message,
-    "\nConfira .env.local (NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY)."
+    "\nConfira .env.local (URL do projeto + SUPABASE_SERVICE_ROLE_KEY)."
   );
   process.exit(1);
 }
