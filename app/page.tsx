@@ -1,7 +1,9 @@
 import { Footer } from "@/components/footer";
-import { churches } from "@/data/churches";
 import { ChurchList, PageHeader } from "@/features/churches";
+import { getChurches } from "@/lib/supabase/queries";
 import type { Metadata } from "next";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Igrejas Católicas de Maceió",
@@ -20,13 +22,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const churches = await getChurches();
+
   return (
     <>
       <main className="min-h-screen">
         <PageHeader />
 
-        {/* Content */}
         <div className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
           <ChurchList churches={churches} />
         </div>

@@ -1,101 +1,48 @@
-# Dados Estáticos - Igrejas
+# Dados
 
-## Arquivo: `data/churches.ts`
+## Supabase (produção)
 
-Este arquivo contém a lista de igrejas católicas de Maceió/AL.
+Os dados da aplicação são armazenados no **Supabase** (PostgreSQL). As páginas consomem dados via queries em `lib/supabase/queries/` (cliente público em `lib/supabase/public.ts`, sem cookies — compatível com `generateStaticParams` e RLS `anon`).
 
-### Estrutura dos dados
+### Aplicar o schema
 
-```typescript
-export const churches: Church[] = [
-  {
-    id: string;           // Identificador único
-    name: string;         // Nome completo da igreja
-    slug: string;         // URL-friendly (gerado via slugify)
-    address: string;      // Endereço completo
-    district: string;     // Bairro
-    imageUrl?: string;    // Opcional: caminho para imagem
-  }
-];
+1. No [Supabase Dashboard](https://supabase.com/dashboard) → **SQL Editor**, execute os arquivos em `supabase/migrations/` **na ordem numérica** (`001_profiles.sql` … `008_rls_policies.sql`).
+2. Opcional: com [Supabase CLI](https://supabase.com/docs/guides/cli) e projeto linkado: `supabase db push`.
+3. Preencha `.env.local` (ver `.env.example`) e rode `npm run seed` para importar dados a partir dos TS abaixo.
+
+### Tabelas principais
+
+| Tabela | Descrição |
+|--------|-----------|
+| `churches` | Igrejas com contato e localização |
+| `schedule_events` | Horários de missas, adorações e confissões |
+| `activities` | Atividades pastorais |
+| `activity_schedules` | Horários das atividades |
+| `clergy` | Clérigos como entidades independentes |
+| `church_clergy` | Vínculo clérigo-igreja (com datas) |
+| `ministries` | Grupos, movimentos e pastorais |
+| `church_ministries` | Vínculo ministério-igreja |
+| `profiles` | Perfis de usuários (admin/editor) |
+| `editor_churches` | Vínculo editor-igreja |
+
+### Migrations
+
+As migrations SQL estão em `supabase/migrations/` e devem ser executadas na ordem numérica.
+
+### Seed
+
+O script `scripts/seed.ts` migra os dados dos arquivos estáticos legados para o Supabase. Requer `NEXT_PUBLIC_SUPABASE_URL` e **`SUPABASE_SERVICE_ROLE_KEY`**. Carrega `.env.local` automaticamente.
+
+```bash
+npm run seed
 ```
 
-### Regras para slugs
+## Arquivos estáticos (legado)
 
-Gerados pela função `slugify()`:
+Os arquivos abaixo são mantidos como referência e para o script de seed:
 
-- Lowercase
-- Sem acentos
-- Espaços substituídos por `-`
+- `churches.ts` — 55 igrejas reais de Maceió/AL (fonte: [Hora da Missa](https://www.horadamissa.com))
+- `clergy.ts` — Clérigos com vínculo por `churchId`
+- `ministries.ts` — Grupos, movimentos e pastorais por categoria
 
-**Exemplos:**
-
-- `São José Operário` → `sao-jose-operario`
-- `Nossa Senhora dos Prazeres` → `nossa-senhora-dos-prazeres`
-
-### Dados atuais
-
-**Total:** 12 igrejas fictícias
-
-**Bairros representados:**
-
-- Centro (2)
-- Pajuçara (2)
-- Farol (1)
-- Jatiúca (1)
-- Ponta Verde (1)
-- Jaraguá (1)
-- Mangabeiras (1)
-- Cidade Universitária (1)
-- Benedito Bentes (1)
-- Tabuleiro do Martins (1)
-
-### Imagens
-
-Apenas 1 igreja possui `imageUrl` definida (para teste):
-
-- Igreja de Nossa Senhora dos Prazeres
-
-As demais usarão o placeholder padrão: `/images/placeholder.svg`
-
-### Gerenciamento
-
-- ✅ **Dados versionados no repositório**
-- ✅ **Sem CRUD**
-- ✅ **Cadastro manual**
-- ⚠️ **Dados fictícios** - Substituir por dados reais em produção
-
-### Como usar
-
-```typescript
-import { churches } from "@/data/churches";
-
-// Listar todas
-const allChurches = churches;
-
-// Buscar por slug
-const church = churches.find((c) => c.slug === "sao-jose-operario");
-
-// Filtrar por bairro
-const pajucaraChurches = churches.filter((c) => c.district === "Pajuçara");
-
-// Obter lista de bairros únicos
-const districts = [...new Set(churches.map((c) => c.district))].sort();
-```
-
-### Adicionando novas igrejas
-
-1. Definir nome, endereço e bairro
-2. Gerar slug usando `slugify(name)`
-3. (Opcional) Adicionar foto em `/public/images/churches/`
-4. Adicionar entrada no array `churches`
-
-```typescript
-{
-  id: "13",
-  name: "Nova Paróquia",
-  slug: slugify("Nova Paróquia"), // → "nova-paroquia"
-  address: "Endereço completo",
-  district: "Nome do Bairro",
-  imageUrl: "/images/churches/nova-paroquia.jpg", // opcional
-}
-```
+Esses arquivos **não são mais importados** pelas páginas da aplicação.

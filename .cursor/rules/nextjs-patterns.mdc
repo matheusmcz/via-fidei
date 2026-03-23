@@ -1,0 +1,37 @@
+---
+description: Padrões para rotas e páginas do Next.js App Router
+globs: app/**/*.tsx
+alwaysApply: false
+---
+
+# Padrões Next.js (App Router)
+
+## Server Components por Padrão
+
+- Componentes em `app/` são Server Components por padrão
+- Usar `"use client"` apenas quando há interatividade (useState, useEffect, event handlers)
+- Preferir props + composição ao invés de Context API
+
+## Rotas Dinâmicas
+
+- Usar `generateStaticParams` para pré-gerar rotas dinâmicas (ex: `app/igreja/[slug]/`)
+- Criar `not-found.tsx` para páginas 404 customizadas
+
+## SEO e Metadata
+
+- Usar `generateMetadata` para metadados dinâmicos por página
+- Incluir Open Graph (`og:title`, `og:description`, `og:image`) e Twitter Cards
+- Title deve conter o nome da igreja + "Via Fidei"
+
+## Navegação e Links
+
+- Usar `next/link` para navegação interna (sem reload completo)
+- Usar `next/image` para imagens com otimização automática
+- Links externos devem ter `target="_blank"` e `rel="noopener noreferrer"`
+
+## Dados
+
+- Consumir dados via queries do Supabase em `@/lib/supabase/queries`
+- Usar `await getChurches()`, `await getChurchBySlug(slug)`, etc. nos Server Components
+- ISR com `export const revalidate = 60` para cache de dados
+- Arquivos em `data/*.ts` são legados (mantidos apenas para seed)

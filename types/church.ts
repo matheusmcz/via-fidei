@@ -47,6 +47,8 @@ export interface Clergy {
   id: string;
   /** Clergy name */
   name: string;
+  /** Church this clergy belongs to (references Church.id) */
+  churchId?: string;
   /** Role in the church */
   role: ClergyRole;
   /** Title prefix (Pe., Mons., etc.) */
@@ -134,6 +136,38 @@ export interface Activity {
   description?: string;
 }
 
+/**
+ * A group, movement, or pastoral within a church
+ */
+export interface ChurchMinistry {
+  /** Unique identifier */
+  id: string;
+  /** Full name (e.g., "Encontro de Casais com Cristo") */
+  label: string;
+  /** Optional acronym (e.g., "ECC") */
+  acronym?: string;
+}
+
+/**
+ * Church ministries organized by category
+ */
+export interface ChurchMinistries {
+  /** Community/prayer groups (e.g., RCC, Terço dos Homens) */
+  groups?: ChurchMinistry[];
+  /** Ecclesial movements (e.g., ECC, Segue-me, Cursilho) */
+  movements?: ChurchMinistry[];
+  /** Parish pastorals (e.g., Pastoral Familiar, Pastoral da Criança) */
+  pastorals?: ChurchMinistry[];
+}
+
+/**
+ * Clergy member enriched with church info (for listing pages)
+ */
+export interface ClergyWithChurch extends Clergy {
+  churchName: string;
+  churchSlug: string;
+}
+
 export interface Church {
   id: string;
   name: string;
@@ -157,4 +191,6 @@ export interface Church {
   activities?: Activity[];
   /** Clergy members (priests, deacons, etc.) */
   clergy?: Clergy[];
+  /** Groups, movements, and pastorals */
+  ministries?: ChurchMinistries;
 }

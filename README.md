@@ -21,14 +21,25 @@
 
 Via Fidei é uma aplicação web desenvolvida para facilitar a busca de igrejas católicas apostólicas romanas em Maceió, Alagoas. O projeto oferece uma interface limpa e intuitiva para visualizar informações sobre paróquias da cidade.
 
+### Documentação
+
+| Documento | Conteúdo |
+|-----------|----------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Estrutura de pastas, Supabase (clientes, migrations, env), fluxo de dados, próximos passos |
+| [docs/QA.md](docs/QA.md) | Casos de teste e checklist de regressão |
+| [data/README.md](data/README.md) | Tabelas, seed, arquivos legados em `data/` |
+| [docs/SHADCN.md](docs/SHADCN.md) | Uso do shadcn/ui no projeto |
+
 ### ✨ Funcionalidades
 
 - 🔍 **Busca em tempo real** - Encontre igrejas por nome (ignora acentos)
 - 📍 **Filtro por bairro** - Localize paróquias em bairros específicos
 - 📱 **Design responsivo** - Interface mobile-first otimizada
-- ⚡ **Performance** - SSR com Next.js 15 e Turbopack
+- ⚡ **Performance** - SSR/ISR com Next.js 15 e Turbopack (`revalidate` nas páginas com dados)
 - 🎨 **UI moderna** - Componentes do shadcn/ui
 - 🔗 **Detalhes completos** - Página individual para cada igreja
+- 🗄️ **Dados** - [Supabase](https://supabase.com/) (PostgreSQL + RLS); seed a partir dos arquivos em `data/`
+- 🔐 **Auth (admin/editor)** - Login em `/login`, área `/admin` (rotas sem link público na UI)
 - 📊 **Analytics** - Vercel Analytics integrado
 
 ## 🚀 Tecnologias
@@ -49,11 +60,16 @@ Via Fidei é uma aplicação web desenvolvida para facilitar a busca de igrejas 
 - **[Vercel Analytics](https://vercel.com/analytics)** - Analytics (plano gratuito)
 - **[Turbopack](https://turbo.build/pack)** - Bundler ultra-rápido
 
+### Dados e Supabase
+
+- **[Supabase](https://supabase.com/)** — PostgreSQL, Auth e API
+- Variáveis de ambiente no padrão do [quickstart Next.js + Supabase](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs): `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (veja [API keys](https://supabase.com/docs/guides/api/api-keys)). Para o script `npm run seed`, use também `SUPABASE_SERVICE_ROLE_KEY` (somente servidor).
+
 ## 📦 Instalação
 
 ### Pré-requisitos
 
-- Node.js 18.19+ ou 20+
+- **Node.js 24.x** (definido em `engines` e `.nvmrc`; Vercel usa a mesma faixa)
 - npm ou yarn
 
 ### Clone e instale
@@ -68,11 +84,24 @@ cd via-fidei
 # Instale as dependências
 npm install
 
+# Configure o Supabase (copie e preencha com as chaves do projeto)
+cp .env.example .env.local
+
 # Inicie o servidor de desenvolvimento
 npm run dev
 ```
 
 Acesse [http://localhost:3000](http://localhost:3000) no navegador.
+
+`npm run build` e o deploy na **Vercel** precisam da URL e da chave pública do Supabase. Você pode usar `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (ou `NEXT_PUBLIC_SUPABASE_ANON_KEY`), **ou** os nomes da integração Vercel↔Supabase (`SUPABASE_URL`, `SUPABASE_ANON_KEY` / `SUPABASE_PUBLISHABLE_KEY`) — o projeto faz fallback e o `next.config.ts` espelha para o bundle do cliente.
+
+**Importante:** na Vercel, marque **Production** e **Preview** para as mesmas variáveis. Se aparecerem só em Production, o build de **deploys de PR (Preview)** continua sem essas variáveis e falha.
+
+Após criar o projeto no Supabase, execute as migrations SQL em `supabase/migrations/` (ordem `001` → `008`) no **SQL Editor**, depois:
+
+```bash
+npm run seed
+```
 
 ## 🛠️ Scripts Disponíveis
 
@@ -88,35 +117,37 @@ npm run start
 
 # Linting
 npm run lint
+
+# Popular o banco a partir dos dados legados em data/ (requer SUPABASE_SERVICE_ROLE_KEY)
+npm run seed
 ```
 
 ## 📁 Estrutura do Projeto
 
 ```
 via-fidei/
-├── app/                      # App Router do Next.js
-│   ├── igreja/[slug]/        # Página de detalhes (dinâmica)
-│   ├── layout.tsx            # Layout raiz
-│   ├── page.tsx              # Página inicial
-│   └── globals.css           # Estilos globais
-├── components/               # Componentes compartilhados
-│   └── ui/                   # Componentes shadcn/ui
-├── features/                 # Features organizadas por domínio
-│   └── churches/             # Feature de igrejas
-│       ├── church-card.tsx   # Card de igreja
-│       ├── church-list.tsx   # Lista com filtros
-│       └── use-church-filters.ts  # Hook de busca/filtro
-├── data/                     # Dados estáticos
-│   └── churches.ts           # 55 igrejas de Maceió
-├── lib/                      # Utilitários
+├── app/                      # App Router (rotas, layouts, páginas)
+│   ├── admin/                # Painel admin (dashboard, editores)
+│   ├── clero/                # Listagem de clérigos
+│   ├── igreja/[slug]/        # Detalhe da igreja
+│   ├── login/                # Login (rota escondida)
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── globals.css
+├── middleware.ts             # Refresh de sessão Supabase
+├── components/ui/            # shadcn/ui
+├── features/                 # Domínios (churches, clergy, auth, theme, …)
+├── data/                     # Fonte do seed (legado; não usado em runtime)
+├── lib/
+│   ├── supabase/             # Clientes, env, queries
 │   └── utils/
-│       ├── cn.ts             # Merge de classes CSS
-│       └── slugify.ts        # Geração de slugs
-├── types/                    # Definições TypeScript
-│   └── church.ts             # Interface Church
-└── public/                   # Assets estáticos
-    └── images/               # Imagens e logos
+├── scripts/                  # seed.ts, load-env.ts
+├── supabase/migrations/      # SQL do schema (001–008)
+├── types/
+└── public/images/
 ```
+
+Detalhes em [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 🎨 Componentes Principais
 
@@ -134,20 +165,9 @@ Hook customizado para gerenciar busca, filtro e ordenação.
 
 ## 📊 Dados
 
-O projeto utiliza dados reais de **55 igrejas católicas** de Maceió/AL, coletados do site [Hora da Missa](https://www.horadamissa.com).
+Os dados em produção ficam no **Supabase** (PostgreSQL). O conjunto inicial replica as **55 igrejas** e metadados derivados da fonte [Hora da Missa](https://www.horadamissa.com), carregados via `npm run seed` a partir de `data/*.ts`.
 
-### Estrutura de dados
-
-```typescript
-interface Church {
-  id: string;
-  name: string;
-  slug: string; // URL-friendly
-  address: string;
-  district: string;
-  imageUrl?: string; // Opcional
-}
-```
+Tipos de domínio em [`types/church.ts`](types/church.ts); leitura na aplicação via [`lib/supabase/queries/`](lib/supabase/queries/). Ver também [`data/README.md`](data/README.md).
 
 ## 🎯 SEO
 
@@ -164,8 +184,13 @@ interface Church {
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/matheusmcz/via-fidei)
 
 1. Conecte seu repositório GitHub
-2. Configure o projeto (detecção automática)
+2. Em **Environment Variables**, defina as mesmas chaves do `.env.local`:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - (Opcional no build) `SUPABASE_SERVICE_ROLE_KEY` — só se algum script de build precisar; em geral **não** exponha no cliente
 3. Deploy!
+
+O banco já deve existir no Supabase (migrations aplicadas, seed executado uma vez em dev ou via pipeline separado).
 
 ### Outras plataformas
 

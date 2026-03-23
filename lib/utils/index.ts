@@ -1,11 +1,16 @@
 export {
+  filterClergyByInitial,
   formatClergyName,
   formatClergyTenure,
   getActiveClergyMembers,
+  getAllClergyWithChurch,
+  getClergyForChurch,
+  getClergyInitials,
   getClergyTitle,
   getPastClergyMembers,
   getRoleLabel,
   isActiveClergyMember,
+  sortClergyByName,
   sortClergyByRole,
   sortClergyByStartDate,
 } from "./clergy";

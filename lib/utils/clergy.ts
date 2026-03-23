@@ -1,4 +1,20 @@
-import type { Clergy, ClergyRole, ClergyTitle } from "@/types";
+import type {
+  Church,
+  Clergy,
+  ClergyRole,
+  ClergyTitle,
+  ClergyWithChurch,
+} from "@/types";
+
+/**
+ * Get clergy members for a specific church
+ */
+export function getClergyForChurch(
+  churchId: string,
+  clergyMembers: Clergy[],
+): Clergy[] {
+  return clergyMembers.filter((c) => c.churchId === churchId);
+}
 
 /**
  * Role hierarchy order (lower index = higher rank)
@@ -149,4 +165,79 @@ export function sortClergyByStartDate(clergy: Clergy[]): Clergy[] {
     const dateB = b.startDate || "0000";
     return dateB.localeCompare(dateA);
   });
+}
+
+/**
+ * Enrich clergy members with church info by joining on churchId
+ */
+export function getAllClergyWithChurch(
+  clergyMembers: Clergy[],
+  churches: Church[],
+): ClergyWithChurch[] {
+  const churchMap = new Map(churches.map((c) => [c.id, c]));
+
+  return clergyMembers
+    .filter(isActiveClergyMember)
+    .filter(
+      (c): c is Clergy & { churchId: string } =>
+        typeof c.churchId === "string" && c.churchId.length > 0,
+    )
+    .map((clergy) => {
+      const church = churchMap.get(clergy.churchId);
+      return {
+        ...clergy,
+        churchName: church?.name ?? "",
+        churchSlug: church?.slug ?? "",
+      };
+    });
+}
+
+/**
+ * Sort clergy alphabetically by name (ignoring title prefix)
+ */
+export function sortClergyByName(
+  clergy: ClergyWithChurch[],
+): ClergyWithChurch[] {
+  return [...clergy].sort((a, b) =>
+    a.name.localeCompare(b.name, "pt-BR"),
+  );
+}
+
+/**
+ * Get unique uppercase initial letters from clergy names
+ */
+export function getClergyInitials(clergy: ClergyWithChurch[]): string[] {
+  const initials = new Set(
+    clergy.map((c) =>
+      c.name
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .charAt(0)
+        .toUpperCase(),
+    ),
+  );
+  return [...initials].sort();
+}
+
+/**
+ * Normalize a character for comparison (remove diacritics, uppercase)
+ */
+function normalizeChar(char: string): string {
+  return char
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
+/**
+ * Filter clergy by initial letter of name (ignoring diacritics)
+ */
+export function filterClergyByInitial(
+  clergy: ClergyWithChurch[],
+  initial: string,
+): ClergyWithChurch[] {
+  if (!initial) return clergy;
+  return clergy.filter(
+    (c) => normalizeChar(c.name.charAt(0)) === initial.toUpperCase(),
+  );
 }

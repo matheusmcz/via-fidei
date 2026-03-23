@@ -2,6 +2,12 @@ export { ChurchCard } from "./church-card";
 export { ChurchList } from "./church-list";
 export { ClergyCard, ClergyHistory, ClergyList } from "./clergy";
 export { ChurchContactSection } from "./contact";
+export {
+  AdminChurchLink,
+  EditableSection,
+  EditIndicator,
+} from "./editor";
+export { MinistriesSection } from "./ministries";
 export { PageHeader } from "./page-header";
 export { Pagination } from "./pagination";
 export { PaginationControls } from "./pagination-controls";
