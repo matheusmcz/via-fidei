@@ -32,7 +32,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "bootstrap-users": "tsx scripts/bootstrap-users.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
