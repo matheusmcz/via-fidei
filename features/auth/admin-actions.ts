@@ -1,5 +1,6 @@
 "use server";
 
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
@@ -33,8 +34,18 @@ export async function createEditor(formData: FormData) {
     return { error: "Nome, email e senha são obrigatórios" };
   }
 
+  let adminAuth;
+  try {
+    adminAuth = createServiceRoleClient();
+  } catch {
+    return {
+      error:
+        "Servidor sem SUPABASE_SERVICE_ROLE_KEY. Defina em .env.local (Project Settings → API).",
+    };
+  }
+
   const { data: authData, error: authError } =
-    await supabase.auth.admin.createUser({
+    await adminAuth.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
