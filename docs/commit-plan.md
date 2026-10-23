@@ -2,7 +2,7 @@
 
 Branch sugerida: `feat/supabase-integracao`
 
-**Estado:** os arquivos foram adicionados ao stage (`git add -A`). **Nenhum commit foi criado.**
+**Estado (23/10/2026):** plano já executado — os commits abaixo estão no histórico da branch `feat/create-users`. Mantido como registro; não reaplicar.
 
 Para aplicar commits **atômicos** na ordem abaixo:
 

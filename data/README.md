@@ -10,9 +10,10 @@ A resolução de URL e chave pública está centralizada em [`lib/supabase/env.t
 
 ### Aplicar o schema
 
-1. No [Supabase Dashboard](https://supabase.com/dashboard) → **SQL Editor**, execute os arquivos em `supabase/migrations/` **na ordem numérica** (`001_profiles.sql` … `008_rls_policies.sql`).
+1. No [Supabase Dashboard](https://supabase.com/dashboard) → **SQL Editor**, execute os arquivos em `supabase/migrations/` **na ordem numérica** (`001_profiles.sql` … `009_profiles_auth_insert_policies.sql`).
 2. Opcional: com [Supabase CLI](https://supabase.com/docs/guides/cli) e projeto linkado: `supabase db push`.
 3. Preencha `.env.local` (ver `.env.example`) e rode `npm run seed` para importar dados a partir dos TS abaixo.
+4. Opcional: `npm run bootstrap-users` cria o primeiro admin e um editor de teste. Refazer o seed gera novos `id` de igrejas — atualize `EDITOR_CHURCH_ID` se usar essa variável.
 
 ### Tabelas principais
 

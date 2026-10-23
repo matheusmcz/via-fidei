@@ -39,7 +39,7 @@ Via Fidei é uma aplicação web desenvolvida para facilitar a busca de igrejas 
 - 🎨 **UI moderna** - Componentes do shadcn/ui
 - 🔗 **Detalhes completos** - Página individual para cada igreja
 - 🗄️ **Dados** - [Supabase](https://supabase.com/) (PostgreSQL + RLS); seed a partir dos arquivos em `data/`
-- 🔐 **Auth (admin/editor)** - Login em `/login`, área `/admin` (rotas sem link público na UI)
+- 🔐 **Auth (admin/editor)** - Login em `/login`, painel `/admin` responsivo para gerenciar editores e seus vínculos com igrejas (rotas sem link público na UI)
 - 📊 **Analytics** - Vercel Analytics integrado
 
 ## 🚀 Tecnologias
@@ -63,7 +63,7 @@ Via Fidei é uma aplicação web desenvolvida para facilitar a busca de igrejas 
 ### Dados e Supabase
 
 - **[Supabase](https://supabase.com/)** — PostgreSQL, Auth e API
-- Variáveis de ambiente no padrão do [quickstart Next.js + Supabase](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs): `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (veja [API keys](https://supabase.com/docs/guides/api/api-keys)). Para o script `npm run seed`, use também `SUPABASE_SERVICE_ROLE_KEY` (somente servidor).
+- Variáveis de ambiente no padrão do [quickstart Next.js + Supabase](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs): `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (veja [API keys](https://supabase.com/docs/guides/api/api-keys)). `SUPABASE_SERVICE_ROLE_KEY` (somente servidor) é usada por `npm run seed`, `npm run bootstrap-users` e pela criação de editores no painel admin.
 
 ## 📦 Instalação
 
@@ -97,10 +97,13 @@ Acesse [http://localhost:3000](http://localhost:3000) no navegador.
 
 **Importante:** na Vercel, marque **Production** e **Preview** para as mesmas variáveis. Se aparecerem só em Production, o build de **deploys de PR (Preview)** continua sem essas variáveis e falha.
 
-Após criar o projeto no Supabase, execute as migrations SQL em `supabase/migrations/` (ordem `001` → `008`) no **SQL Editor**, depois:
+Após criar o projeto no Supabase, execute as migrations SQL em `supabase/migrations/` (ordem `001` → `009`) no **SQL Editor**, depois:
 
 ```bash
 npm run seed
+
+# Opcional: cria o primeiro admin e um editor de teste (ADMIN_* e EDITOR_* no .env.local)
+npm run bootstrap-users
 ```
 
 ## 🛠️ Scripts Disponíveis
@@ -120,6 +123,9 @@ npm run lint
 
 # Popular o banco a partir dos dados legados em data/ (requer SUPABASE_SERVICE_ROLE_KEY)
 npm run seed
+
+# Criar/reaproveitar admin + editor de teste (requer SUPABASE_SERVICE_ROLE_KEY e ADMIN_*/EDITOR_*)
+npm run bootstrap-users
 ```
 
 ## 📁 Estrutura do Projeto
@@ -136,13 +142,13 @@ via-fidei/
 │   └── globals.css
 ├── middleware.ts             # Refresh de sessão Supabase
 ├── components/ui/            # shadcn/ui
-├── features/                 # Domínios (churches, clergy, auth, theme, …)
+├── features/                 # Domínios (churches, clergy, auth, admin, theme, …)
 ├── data/                     # Fonte do seed (legado; não usado em runtime)
 ├── lib/
 │   ├── supabase/             # Clientes, env, queries
 │   └── utils/
-├── scripts/                  # seed.ts, load-env.ts
-├── supabase/migrations/      # SQL do schema (001–008)
+├── scripts/                  # seed.ts, bootstrap-users.ts, load-env.ts
+├── supabase/migrations/      # SQL do schema (001–009)
 ├── types/
 └── public/images/
 ```
@@ -187,7 +193,7 @@ Tipos de domínio em [`types/church.ts`](types/church.ts); leitura na aplicaçã
 2. Em **Environment Variables**, defina as mesmas chaves do `.env.local`:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-   - (Opcional no build) `SUPABASE_SERVICE_ROLE_KEY` — só se algum script de build precisar; em geral **não** exponha no cliente
+   - `SUPABASE_SERVICE_ROLE_KEY` — necessária em runtime no servidor para criar editores em `/admin/usuarios/novo`; **nunca** com prefixo `NEXT_PUBLIC_`
 3. Deploy!
 
 O banco já deve existir no Supabase (migrations aplicadas, seed executado uma vez em dev ou via pipeline separado).
