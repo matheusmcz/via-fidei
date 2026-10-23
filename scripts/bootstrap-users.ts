@@ -60,26 +60,11 @@ async function ensureUser(
     return data.user.id;
   }
 
-  if (error) {
-    console.error(
-      "[auth.admin.createUser]",
-      JSON.stringify(
-        {
-          message: error.message,
-          status: (error as { status?: number }).status,
-          code: (error as { code?: string }).code,
-        },
-        null,
-        2
-      )
-    );
+  if (!error) {
+    throw new Error(`Falha ao criar usuário: ${email}`);
   }
 
-  const msg = error?.message ?? "";
-  const duplicate =
-    /already|registered|exists|duplicate/i.test(msg) || error?.status === 422;
-
-  if (duplicate) {
+  if (error.code === "email_exists") {
     const { data: row, error: profileError } = await supabase
       .from("profiles")
       .select("id")
@@ -91,15 +76,16 @@ async function ensureUser(
       return row.id;
     }
     throw new Error(
-      `Email já usado no Auth mas sem perfil em profiles: ${email}. ${profileError?.message ?? msg}`
+      `Email já usado no Auth mas sem perfil em profiles: ${email}. ${profileError?.message ?? error.message}`
     );
   }
 
-  const hint =
-    msg.includes("Database error creating new user")
-      ? "\nDica: aplique a migration 009 (políticas RLS + trigger) no projeto Supabase e tente de novo."
-      : "";
-  throw error ?? new Error(`Falha ao criar usuário: ${email}${hint}`);
+  const hint = error.message.includes("Database error")
+    ? "\nDica: confira se a migration 009 (handle_new_user com search_path) foi aplicada no projeto Supabase."
+    : "";
+  throw new Error(
+    `Falha ao criar usuário ${email} (${error.code ?? error.status}): ${error.message}${hint}`
+  );
 }
 
 async function resolveChurchId(): Promise<string> {
