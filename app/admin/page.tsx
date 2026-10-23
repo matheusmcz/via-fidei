@@ -1,6 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 import { Church, Users } from "lucide-react";
+import Link from "next/link";
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
@@ -21,13 +23,13 @@ export default async function AdminDashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground mt-1">
-          Visão geral do sistema
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Dashboard
+        </h1>
+        <p className="mt-2 text-muted-foreground">Visão geral do sistema</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           title="Igrejas"
           value={churchCount ?? 0}
@@ -61,12 +63,17 @@ function StatCard({
   href?: string;
 }) {
   const content = (
-    <Card className={href ? "hover:bg-accent/50 transition-colors" : ""}>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold mt-1">{value}</p>
+    <Card
+      className={cn(
+        "h-full",
+        href && "transition-all hover:shadow-md hover:border-foreground/20",
+      )}
+    >
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm text-muted-foreground">{title}</p>
+            <p className="mt-1 text-3xl font-bold">{value}</p>
           </div>
           {icon}
         </div>
@@ -75,7 +82,14 @@ function StatCard({
   );
 
   if (href) {
-    return <a href={href}>{content}</a>;
+    return (
+      <Link
+        href={href}
+        className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        {content}
+      </Link>
+    );
   }
 
   return content;

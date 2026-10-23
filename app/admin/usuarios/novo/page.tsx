@@ -64,14 +64,16 @@ export default function NewEditorPage() {
       </Link>
 
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Novo editor</h2>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Novo editor
+        </h1>
+        <p className="mt-2 text-muted-foreground">
           Crie uma conta de editor e vincule a igrejas
         </p>
       </div>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <form action={formAction} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="name">Nome</Label>
@@ -135,7 +137,7 @@ export default function NewEditorPage() {
               <p className="text-sm text-destructive">{state.error}</p>
             )}
 
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

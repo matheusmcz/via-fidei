@@ -52,18 +52,18 @@ export default async function EditorDetailPage({
         Voltar para editores
       </Link>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="break-words text-3xl font-bold tracking-tight sm:text-4xl">
             {editor.name || editor.email}
-          </h2>
-          <p className="text-muted-foreground mt-1">{editor.email}</p>
+          </h1>
+          <p className="mt-2 break-all text-muted-foreground">{editor.email}</p>
         </div>
         <ToggleActiveButton editorId={editor.id} isActive={editor.is_active} />
       </div>
 
       <Card>
-        <CardContent className="p-6 space-y-4">
+        <CardContent className="p-4 space-y-4 sm:p-6">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Status</p>
@@ -82,7 +82,7 @@ export default async function EditorDetailPage({
       </Card>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <h3 className="text-lg font-semibold mb-4">Igrejas vinculadas</h3>
           <EditorChurchManager
             editorId={id}
