@@ -17,26 +17,24 @@ export default async function EditorDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: editor } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", id)
-    .eq("role", "editor")
-    .single();
+  const [
+    { data: editor },
+    { data: editorChurches },
+    { data: allChurches },
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", id)
+      .eq("role", "editor")
+      .single(),
+    supabase.from("editor_churches").select("church_id").eq("editor_id", id),
+    supabase.from("churches").select("id, name").order("name"),
+  ]);
 
   if (!editor) {
     notFound();
   }
-
-  const { data: editorChurches } = await supabase
-    .from("editor_churches")
-    .select("church_id, churches(id, name)")
-    .eq("editor_id", id);
-
-  const { data: allChurches } = await supabase
-    .from("churches")
-    .select("id, name")
-    .order("name");
 
   const linkedChurchIds = (editorChurches ?? []).map(
     (ec: { church_id: string }) => ec.church_id

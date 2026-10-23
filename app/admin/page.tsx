@@ -51,17 +51,14 @@ export default async function AdminDashboard() {
   );
 }
 
-function StatCard({
-  title,
-  value,
-  icon,
-  href,
-}: {
+interface StatCardProps {
   title: string;
   value: number;
   icon: React.ReactNode;
   href?: string;
-}) {
+}
+
+function StatCard({ title, value, icon, href }: StatCardProps) {
   const content = (
     <Card
       className={cn(
