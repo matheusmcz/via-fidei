@@ -42,6 +42,28 @@ Via Fidei é uma aplicação web desenvolvida para facilitar a busca de igrejas 
 - 🔐 **Auth (admin/editor)** - Login em `/login`, painel `/admin` responsivo para gerenciar editores e seus vínculos com igrejas (rotas sem link público na UI)
 - 📊 **Analytics** - Vercel Analytics integrado
 
+## 📸 Capturas de tela
+
+### Listagem de igrejas
+
+Busca por nome, filtro por bairro e paginação.
+
+![Home com a listagem de igrejas](docs/screenshots/home-desktop.png)
+
+### Página da paróquia
+
+Foto, endereço, contato, clero, horários e grupos, movimentos e pastorais — exemplo da Paróquia São Paulo Apóstolo.
+
+![Página da Paróquia São Paulo Apóstolo](docs/screenshots/igreja-sao-paulo-apostolo-desktop.png)
+
+### Mobile
+
+<p align="center">
+  <img src="docs/screenshots/home-mobile.png" alt="Listagem de igrejas no celular" width="280" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/igreja-sao-paulo-apostolo-mobile.png" alt="Página da Paróquia São Paulo Apóstolo no celular" width="280" />
+</p>
+
 ## 🚀 Tecnologias
 
 ### Core
