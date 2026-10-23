@@ -97,7 +97,7 @@ Acesse [http://localhost:3000](http://localhost:3000) no navegador.
 
 **Importante:** na Vercel, marque **Production** e **Preview** para as mesmas variáveis. Se aparecerem só em Production, o build de **deploys de PR (Preview)** continua sem essas variáveis e falha.
 
-Após criar o projeto no Supabase, execute as migrations SQL em `supabase/migrations/` (ordem `001` → `009`) no **SQL Editor**, depois:
+Após criar o projeto no Supabase, execute as migrations SQL em `supabase/migrations/` (ordem `001` → `010`) no **SQL Editor**, depois:
 
 ```bash
 npm run seed
@@ -148,7 +148,7 @@ via-fidei/
 │   ├── supabase/             # Clientes, env, queries
 │   └── utils/
 ├── scripts/                  # seed.ts, bootstrap-users.ts, load-env.ts
-├── supabase/migrations/      # SQL do schema (001–009)
+├── supabase/migrations/      # SQL do schema (001–010)
 ├── types/
 └── public/images/
 ```

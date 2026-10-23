@@ -45,14 +45,14 @@ Resumo do que está em produção hoje:
 
 | Camada | Descrição |
 |--------|-----------|
-| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](supabase/migrations/) (`001`–`009`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). Como as migrations foram aplicadas pelo SQL Editor, o histórico de migrations do projeto remoto está vazio — conferir o estado pelo schema, não por `supabase migration list`. |
+| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](supabase/migrations/) (`001`–`010`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP) — conferir o estado pelo schema, não por `supabase migration list`. |
 | **Chaves públicas** | URL + chave **publishable** ou **anon** (JWT) para o cliente. Resolução central em [`lib/supabase/env.ts`](lib/supabase/env.ts) — ver subseção **Variáveis de ambiente (Supabase + Vercel)** abaixo. `SUPABASE_SERVICE_ROLE_KEY` **apenas** servidor / `npm run seed` ([API keys](https://supabase.com/docs/guides/api/api-keys)). |
 | **Auth** | Supabase Auth + cookies (`@supabase/ssr`); [`middleware.ts`](middleware.ts) na raiz renova a sessão; [`features/auth/`](features/auth/) expõe `AuthProvider` e `useAuth`. |
 | **Leitura pública** | [`lib/supabase/public.ts`](lib/supabase/public.ts) — `createClient` do `@supabase/supabase-js` só com chave pública, **sem** `cookies()`. Usado em [`lib/supabase/queries/`](lib/supabase/queries/) (listagens, detalhes, `generateStaticParams`). |
 | **Sessão no servidor** | [`lib/supabase/server.ts`](lib/supabase/server.ts) — `createServerClient` com cookies (login, `/admin`, Server Actions). |
 | **Cliente browser** | [`lib/supabase/client.ts`](lib/supabase/client.ts) — `createBrowserClient` (`@supabase/ssr`). |
 | **Middleware** | [`lib/supabase/middleware.ts`](lib/supabase/middleware.ts) — usado pelo [`middleware.ts`](middleware.ts) na raiz (refresh de sessão). |
-| **Service role** | [`lib/supabase/service-role.ts`](lib/supabase/service-role.ts) — `createServiceRoleClient()` (sem sessão persistida), **somente servidor**. Usado pela Server Action `createEditor` para a Auth Admin API (`auth.admin.createUser`), que não aceita a chave pública. |
+| **Service role** | [`lib/supabase/service-role.ts`](lib/supabase/service-role.ts) — `createServiceRoleClient()` (sem sessão persistida), **somente servidor** (`server-only` quebra o build se for importado no cliente). Usado pela Server Action `createEditor` para a Auth Admin API (`auth.admin.createUser`), que não aceita a chave pública. |
 | **Seed** | [`scripts/seed.ts`](scripts/seed.ts) + [`scripts/load-env.ts`](scripts/load-env.ts) — `npm run seed` popula o banco a partir de `data/*.ts` (requer `SUPABASE_SERVICE_ROLE_KEY` + URL resolvível por `getSupabaseUrl()`). |
 | **Bootstrap de usuários** | [`scripts/bootstrap-users.ts`](scripts/bootstrap-users.ts) — `npm run bootstrap-users` cria (ou reaproveita) um admin e um editor de teste no Auth, ajusta `profiles.role` e vincula o editor a uma igreja em `editor_churches`. Variáveis `ADMIN_*` / `EDITOR_*` documentadas em [`.env.example`](.env.example). |
 | **Dados em TS** | Arquivos em [`data/`](data/) não são importados pelas páginas; servem de fonte para o seed e referência. |
@@ -284,7 +284,8 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `006_ministries.sql` - Ministérios + vínculo ministério-igreja
 - `007_editor_churches.sql` - Vínculo editor-igreja
 - `008_rls_policies.sql` - Todas as políticas de Row Level Security
-- `009_profiles_auth_insert_policies.sql` - Reescreve `handle_new_user()` com `search_path` explícito (corrige "Database error creating new user") e adiciona políticas de INSERT em `profiles` (ver pendência de segurança em **Próximos Passos**)
+- `009_profiles_auth_insert_policies.sql` - Reescreve `handle_new_user()` com `search_path` explícito (corrige "Database error creating new user"); as políticas de INSERT que ela cria foram removidas na `010`
+- `010_profiles_privilege_escalation.sql` - Trigger `BEFORE UPDATE` em `profiles` que só deixa admin alterar `role`/`is_active` (exceto chamadas com service role ou SQL Editor); remove as políticas de INSERT da `009`
 
 ### `/scripts`
 
@@ -334,27 +335,28 @@ Validado ponta a ponta com Playwright (fluxos públicos, admin e editor) em 23/1
 - [x] Migration `009`: trigger `handle_new_user()` com `search_path` explícito
 - [x] Página da igreja condicionada ao papel: admin vê "Gerenciar editores", lápis e empty states com "Adicionar"; editor vê lápis só nas igrejas vinculadas
 - [x] Telas `/admin/*` responsivas (mobile, tablet e desktop) no padrão visual do site público
+- [x] Migration `010`: trigger impede que usuários não admin alterem o próprio `role`/`is_active` (antes um editor podia virar admin pela API) e remove as políticas de INSERT da `009`, que eram desnecessárias — o trigger `handle_new_user()` pertence ao dono da tabela e não passa pelo RLS. Testado com as contas reais: editor bloqueado (`42501`), admin e service role continuam alterando.
+- [x] Server Actions de editores (`createEditor`, `toggleEditorActive`, `updateEditorChurches`) checam admin ativo
+- [x] `createEditor` remove o usuário do Auth se o perfil ou os vínculos falharem
+- [x] `updateEditorChurches` insere os vínculos novos antes de remover os antigos (uma falha na inserção não apaga os atuais)
+- [x] `lib/supabase/service-role.ts` protegido com `server-only`
+- [x] `bootstrap-users` identifica email duplicado pelo código `email_exists` e mostra o motivo real das falhas
+- [x] Detalhe do editor com consultas em paralelo; título e `noindex` em `/admin` e `/login`
 
-**Pendente — segurança (prioridade alta)**
+**Pendente — segurança**
 
-- [ ] **Escalada de privilégio em `profiles`:** a política `profiles_update_own` (`008`) deixa qualquer usuário autenticado alterar a própria linha sem restrição de coluna; um editor pode mudar o próprio `role` para `admin` ou se reativar via API. Corrigir com trigger `BEFORE UPDATE` que só permite alterar `role`/`is_active` quando `is_admin()` (ou quando a chamada não vem da role `authenticated`, para manter scripts com service role).
-- [ ] **Revisar a migration `009`:** o trigger pertence ao `postgres` (dono da tabela, sem `FORCE RLS`), então já ignorava o RLS — a correção real foi o `search_path`. As políticas `profiles_insert_service_role` (service role já ignora RLS) e `profiles_insert_supabase_auth_admin` são desnecessárias, e `profiles_insert_self` permite que um usuário sem perfil insira a própria linha com qualquer `role`. Remover as três numa migration `010`.
 - [ ] Confirmar no Supabase (Authentication → Providers) se o cadastro público está desativado; o app não tem tela de cadastro.
-- [ ] Checagem de papel admin em `toggleEditorActive` e `updateEditorChurches` (hoje dependem só do RLS; `createEditor` já checa).
-- [ ] `import "server-only"` em `lib/supabase/service-role.ts` para impedir uso acidental em Client Components.
 
 **Pendente — funcional**
 
 - [ ] Botão de sair e indicador de sessão: a action `logout` existe em `features/auth/actions.ts`, mas nenhuma tela a usa.
 - [ ] Formulários e Server Actions de edição para editor/admin na página da igreja (botões "Adicionar" e lápis ainda sem fluxo).
-- [ ] `createEditor`: desfazer a criação do usuário no Auth se a atualização do perfil ou o vínculo de igrejas falhar (hoje fica um usuário órfão).
-- [ ] `updateEditorChurches`: apagar e reinserir vínculos não é atômico; se a inserção falhar, o editor perde todos os vínculos.
 - [ ] Seção vazia para visitante: hoje o card e o título aparecem sem conteúdo (`EditableSection` retorna `null` só para o corpo). Decidir entre ocultar a seção inteira (alvo de UX abaixo) ou exibir a mensagem de vazio (o que o QA CT-007 espera).
+- [ ] Erros de `toggleEditorActive` e `updateEditorChurches` são mostrados com `alert()`; trocar por mensagem na própria tela.
 
 **Pendente — qualidade e dados**
 
-- [ ] Detalhe do editor (`/admin/usuarios/[id]`): rodar as 3 consultas da página em paralelo (`Promise.all`); hoje são sequenciais (1–2 s por carregamento).
-- [ ] Metadata das telas admin (título genérico "Via Fidei") e `robots: noindex` para `/admin` e `/login`.
+- [ ] Extrair o bloco de logo e marca compartilhado entre `PageHeader` e `AdminHeader`.
 - [ ] Avisos do Next.js no console: `metadataBase` não definido; imagem do logo detectada como LCP sem `priority`.
 - [ ] Dados: só 2 clérigos cadastrados (ambos de São Paulo Apóstolo); contato de São Paulo Apóstolo com valores de exemplo (`(82) 99999-9999`). Conferir o seed.
 
@@ -403,7 +405,8 @@ Um editor pode ser vinculado a **múltiplas igrejas**. Admin tem acesso de ediç
 #### Gestão de editores (admin) — implementado
 
 - Dashboard `/admin`, lista `/admin/usuarios`, detalhe `/admin/usuarios/[id]`, novo `/admin/usuarios/novo`.
-- Criação de editor pelo painel usa `createServiceRoleClient()` para `auth.admin.createUser` (email já confirmado) e vincula as igrejas selecionadas.
+- Criação de editor pelo painel usa `createServiceRoleClient()` para `auth.admin.createUser` (email já confirmado) e vincula as igrejas selecionadas; se o perfil ou os vínculos falharem, o usuário é removido do Auth.
+- Todas as Server Actions de `admin-actions.ts` checam se quem chama é admin ativo (`requireAdmin`), além do RLS.
 - Vincular/desvincular igrejas, ativar/desativar editor. Atalho **Gerenciar editores** na página da igreja para admin (`AdminChurchLink`).
 - Layout responsivo com `AdminHeader` (`features/admin`): grids de 1 coluna no mobile, 3 no dashboard a partir de `sm` e 2/3 na lista de editores (`md`/`xl`).
 

@@ -17,7 +17,7 @@ Este documento define os casos de teste, comportamentos esperados e fluxos de va
 
 - Node.js 24.x (ver `package.json` → `engines` e `.nvmrc`)
 - npm ou pnpm instalado
-- Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→009) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../.env.example))
+- Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→010) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../.env.example))
 - Para os fluxos logados (CT-011 a CT-014): `npm run bootstrap-users` com `ADMIN_*` e `EDITOR_*` no `.env.local`. `EDITOR_CHURCH_ID` precisa ser o `id` atual de uma igreja no banco (os IDs mudam se o seed for refeito); sem ele, o script usa a primeira igreja.
 - Projeto Supabase **ativo**: no plano gratuito ele é pausado após inatividade e o endereço deixa de resolver (`ENOTFOUND` no log, erro 500 na home). Restaurar no Dashboard antes de testar.
 - **Build / Vercel:** URL e chave pública do Supabase disponíveis no ambiente do deploy (Production **e** Preview se houver PRs). Ver [ARCHITECTURE.md](../ARCHITECTURE.md) (seção Supabase + Vercel) e [README](../README.md) (instalação)
@@ -292,6 +292,7 @@ Peça ao Copilot: "run QA tests" ou "testar a aplicação"
 - [ ] Marcar/desmarcar igrejas mostra "Salvar vínculos"; salvar atualiza a lista
 - [ ] "Desativar"/"Ativar" alterna o status (badge "Inativo" na lista)
 - [ ] `/admin/usuarios/novo`: criar editor com nome, email, senha (mín. 6) e igrejas → volta para a lista com o editor novo
+- [ ] Página de admin e de login: título "Admin | Via Fidei" / "Login | Via Fidei" e `<meta name="robots" content="noindex, nofollow">`
 - [ ] Na página de uma igreja: "Gerenciar editores", lápis nas seções e, em seções vazias, mensagem + botão "Adicionar"
 
 > Ao testar criação, usar email descartável (ex: `e2e-editor-<timestamp>@example.com`) e removê-lo depois pela Auth Admin API ou pelo Dashboard.
@@ -307,6 +308,7 @@ Peça ao Copilot: "run QA tests" ou "testar a aplicação"
 - [ ] Na igreja vinculada: lápis nas seções; sem "Gerenciar editores"
 - [ ] Em igreja não vinculada: nenhum controle de edição (igual ao visitante)
 - [ ] `/admin` redireciona para `/`
+- [ ] Pela API (sessão do editor), `update profiles set role = 'admin'` ou `is_active` na própria linha falha com `42501`; alterar o próprio `name` funciona
 
 ---
 
@@ -378,4 +380,4 @@ Use este checklist antes de cada deploy:
 | Data       | Versão | Testador | Resultado |
 | ---------- | ------ | -------- | --------- |
 | 2026-02-27 | v0.1.0 | Copilot  | ✅ Passou |
-| 2026-10-23 | v0.1.0 (`feat/create-users`) | Cursor + Playwright MCP | ⚠️ Passou com ressalvas: CT-001 a CT-014 OK, exceto divergência em CT-007 (seções vazias para visitante); em CT-012, "Salvar vínculos" e "Desativar/Ativar" não foram executados |
+| 2026-10-23 | v0.1.0 (`feat/create-users`) | Cursor + Playwright MCP | ⚠️ Passou com ressalvas: CT-001 a CT-014 OK, exceto divergência em CT-007 (seções vazias para visitante). Reteste após as correções do code review (migration `010` e actions de admin): CT-012 completo, incluindo "Salvar vínculos" e "Desativar/Ativar", e bloqueio de autopromoção do CT-013 |
