@@ -1,3 +1,4 @@
+import { getClergyHonors } from "@/lib/utils";
 import type {
   Activity,
   Church,
@@ -49,6 +50,7 @@ interface DbChurchClergy {
     image_url: string | null;
     birth_date: string | null;
     death_date: string | null;
+    honors: string[] | null;
     bio: string | null;
     whatsapp: string | null;
     instagram: string | null;
@@ -82,6 +84,7 @@ function toClergy(
   churchId: string
 ): Clergy {
   const c = db.clergy;
+  const honors = getClergyHonors(c.honors ?? undefined);
   const socialLinks: Clergy["socialLinks"] = {};
   if (c.whatsapp) socialLinks.whatsapp = c.whatsapp;
   if (c.instagram) socialLinks.instagram = c.instagram;
@@ -97,6 +100,7 @@ function toClergy(
     ...(c.image_url && { imageUrl: c.image_url }),
     ...(c.birth_date && { birthDate: c.birth_date }),
     ...(c.death_date && { deathDate: c.death_date }),
+    ...(honors.length > 0 && { honors }),
     ...(db.start_date && { startDate: db.start_date }),
     ...(db.end_date && { endDate: db.end_date }),
     ...(c.bio && { bio: c.bio }),

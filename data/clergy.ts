@@ -31,7 +31,9 @@ export const clergyMembers: Clergy[] = [
     churchId: "46",
     role: "parish-priest",
     title: "padre",
+    honors: ["canon", "vicar-general", "prefect-of-studies"],
     imageUrl: "/images/pe-jose-elielton.jpeg",
+    bio: "Vigário Geral da Arquidiocese de Maceió, nomeado em maio de 2025 pelo arcebispo Dom Beto Breis. Cargo de alta confiança na administração arquidiocesana.\n\nPrefeito de Estudos do Seminário Maior Nossa Senhora da Assunção, designado em setembro de 2024 para coordenar a formação acadêmica.\n\nAtuou anteriormente como pároco da Paróquia São Sebastião, em Rio Largo, Alagoas.",
   },
   {
     id: "46-clergy-4",

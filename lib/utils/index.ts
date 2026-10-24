@@ -5,6 +5,8 @@ export {
   formatClergyTenure,
   getActiveClergyMembers,
   getClergyAge,
+  getClergyHonorLabel,
+  getClergyHonors,
   isFullClergyDate,
   getAllClergyWithChurch,
   getClergyForChurch,

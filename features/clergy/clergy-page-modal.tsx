@@ -14,6 +14,7 @@ import {
   getRoleLabel,
 } from "@/lib/utils";
 import type { ClergyWithChurch } from "@/types";
+import { ClergyHonorFlags } from "./clergy-honor-flags";
 import { ClergyVitalInfo } from "./clergy-vital-info";
 import {
   Church,
@@ -98,10 +99,11 @@ export function ClergyPageModal({
             {tenure && <span className="ml-1">({tenure})</span>}
           </p>
 
+          <ClergyHonorFlags honors={clergy.honors} />
           <ClergyVitalInfo clergy={clergy} />
 
           {clergy.bio && (
-            <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
+            <p className="text-sm text-muted-foreground mt-4 leading-relaxed whitespace-pre-line">
               {clergy.bio}
             </p>
           )}

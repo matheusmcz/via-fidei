@@ -1,3 +1,4 @@
+import { getClergyHonors } from "@/lib/utils";
 import type {
   ClergyRole,
   ClergyTitle,
@@ -15,6 +16,7 @@ interface DbClergyWithChurch {
   image_url: string | null;
   birth_date: string | null;
   death_date: string | null;
+  honors: string[] | null;
   bio: string | null;
   whatsapp: string | null;
   instagram: string | null;
@@ -53,6 +55,8 @@ export async function getAllClergyWithChurch(): Promise<ClergyWithChurch[]> {
     if (c.instagram) socialLinks.instagram = c.instagram;
     if (c.facebook) socialLinks.facebook = c.facebook;
 
+    const honors = getClergyHonors(c.honors ?? undefined);
+
     result.push({
       id: c.id,
       name: c.name,
@@ -62,6 +66,7 @@ export async function getAllClergyWithChurch(): Promise<ClergyWithChurch[]> {
       ...(c.image_url && { imageUrl: c.image_url }),
       ...(c.birth_date && { birthDate: c.birth_date }),
       ...(c.death_date && { deathDate: c.death_date }),
+      ...(honors.length > 0 && { honors }),
       ...(c.bio && { bio: c.bio }),
       ...(Object.keys(socialLinks).length > 0 && { socialLinks }),
       ...(activeLink && {

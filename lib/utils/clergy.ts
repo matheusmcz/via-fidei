@@ -1,6 +1,7 @@
 import type {
   Church,
   Clergy,
+  ClergyHonor,
   ClergyRole,
   ClergyTitle,
   ClergyWithChurch,
@@ -47,6 +48,31 @@ const TITLE_ABBREVIATIONS: Record<ClergyTitle, string> = {
   frei: "Fr.",
   dom: "Dom",
 };
+
+const HONOR_ORDER: ClergyHonor[] = [
+  "canon",
+  "vicar-general",
+  "prefect-of-studies",
+];
+
+const HONOR_LABELS: Record<ClergyHonor, string> = {
+  canon: "Cônego",
+  "vicar-general": "Vigário Geral",
+  "prefect-of-studies": "Prefeito de Estudos",
+};
+
+/**
+ * Keep known honors in display order and drop anything else.
+ */
+export function getClergyHonors(honors?: readonly string[]): ClergyHonor[] {
+  if (!honors || honors.length === 0) return [];
+  const present = new Set(honors);
+  return HONOR_ORDER.filter((honor) => present.has(honor));
+}
+
+export function getClergyHonorLabel(honor: ClergyHonor): string {
+  return HONOR_LABELS[honor];
+}
 
 /**
  * Get the Portuguese label for a clergy role

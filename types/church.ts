@@ -23,6 +23,12 @@ export type ClergyRole =
 export type ClergyTitle = "padre" | "monsenhor" | "frei" | "dom";
 
 /**
+ * Honor or office shown as a flag on the clergy detail.
+ * Independent from the parish role and the name prefix.
+ */
+export type ClergyHonor = "canon" | "vicar-general" | "prefect-of-studies";
+
+/**
  * Religious order suffix (e.g., OFM, SJ, OP)
  * Uses loose string pattern to allow known values with autocomplete while accepting custom strings
  */
@@ -53,6 +59,8 @@ export interface Clergy {
   role: ClergyRole;
   /** Title prefix (Pe., Mons., etc.) */
   title?: ClergyTitle;
+  /** Honors and offices shown as flags (Cônego, Vigário Geral, etc.) */
+  honors?: ClergyHonor[];
   /** Religious order suffix (OFM, SJ, etc.) */
   suffix?: ReligiousOrderSuffix;
   /** Profile image URL */

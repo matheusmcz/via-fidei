@@ -6,6 +6,7 @@ export type {
   ChurchMinistry,
   ChurchType,
   Clergy,
+  ClergyHonor,
   ClergyRole,
   ClergyTitle,
   ClergyWithChurch,
