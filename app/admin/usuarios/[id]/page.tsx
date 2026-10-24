@@ -1,0 +1,94 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { EditorChurchManager } from "./editor-church-manager";
+import { ToggleActiveButton } from "./toggle-active-button";
+
+interface EditorDetailPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function EditorDetailPage({
+  params,
+}: EditorDetailPageProps) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const [
+    { data: editor },
+    { data: editorChurches },
+    { data: allChurches },
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", id)
+      .eq("role", "editor")
+      .single(),
+    supabase.from("editor_churches").select("church_id").eq("editor_id", id),
+    supabase.from("churches").select("id, name").order("name"),
+  ]);
+
+  if (!editor) {
+    notFound();
+  }
+
+  const linkedChurchIds = (editorChurches ?? []).map(
+    (ec: { church_id: string }) => ec.church_id
+  );
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <Link
+        href="/admin/usuarios"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Voltar para editores
+      </Link>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="break-words text-3xl font-bold tracking-tight sm:text-4xl">
+            {editor.name || editor.email}
+          </h1>
+          <p className="mt-2 break-all text-muted-foreground">{editor.email}</p>
+        </div>
+        <ToggleActiveButton editorId={editor.id} isActive={editor.is_active} />
+      </div>
+
+      <Card>
+        <CardContent className="p-4 space-y-4 sm:p-6">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-muted-foreground">Status</p>
+              <p className="font-medium">
+                {editor.is_active ? "Ativo" : "Inativo"}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Criado em</p>
+              <p className="font-medium">
+                {new Date(editor.created_at).toLocaleDateString("pt-BR")}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 sm:p-6">
+          <h3 className="text-lg font-semibold mb-4">Igrejas vinculadas</h3>
+          <EditorChurchManager
+            editorId={id}
+            allChurches={allChurches ?? []}
+            linkedChurchIds={linkedChurchIds}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

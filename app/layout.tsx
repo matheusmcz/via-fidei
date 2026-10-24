@@ -1,3 +1,4 @@
+import { AuthProvider } from "@/features/auth";
 import { ThemeProvider } from "@/features/theme";
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
@@ -74,7 +75,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
           <Analytics />
         </ThemeProvider>
       </body>

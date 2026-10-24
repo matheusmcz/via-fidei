@@ -15,8 +15,12 @@ Este documento define os casos de teste, comportamentos esperados e fluxos de va
 
 ### Pré-requisitos
 
-- Node.js 18+
+- Node.js 24.x (ver `package.json` → `engines` e `.nvmrc`)
 - npm ou pnpm instalado
+- Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→010) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../.env.example))
+- Para os fluxos logados (CT-011 a CT-014): `npm run bootstrap-users` com `ADMIN_*` e `EDITOR_*` no `.env.local`. `EDITOR_CHURCH_ID` precisa ser o `id` atual de uma igreja no banco (os IDs mudam se o seed for refeito); sem ele, o script usa a primeira igreja.
+- Projeto Supabase **ativo**: no plano gratuito ele é pausado após inatividade e o endereço deixa de resolver (`ENOTFOUND` no log, erro 500 na home). Restaurar no Dashboard antes de testar.
+- **Build / Vercel:** URL e chave pública do Supabase disponíveis no ambiente do deploy (Production **e** Preview se houver PRs). Ver [ARCHITECTURE.md](../ARCHITECTURE.md) (seção Supabase + Vercel) e [README](../README.md) (instalação)
 
 ### Iniciar o servidor de desenvolvimento
 
@@ -51,11 +55,18 @@ Peça ao Copilot: "run QA tests" ou "testar a aplicação"
 
 ## Páginas da Aplicação
 
-| Rota             | Descrição                              | Status          |
-| ---------------- | -------------------------------------- | --------------- |
-| `/`              | Listagem de igrejas com busca e filtro | ✅ Implementado |
-| `/igreja/[slug]` | Página de detalhes da igreja           | ✅ Implementado |
-| `/clero`         | Listagem de clérigos                   | ✅ Implementado |
+| Rota               | Descrição                                      | Status          |
+| ------------------ | ---------------------------------------------- | --------------- |
+| `/`                | Listagem de igrejas com busca e filtro         | ✅ Implementado |
+| `/igreja/[slug]`   | Página de detalhes da igreja (dados Supabase) | ✅ Implementado |
+| `/clero`           | Listagem de clérigos                           | ✅ Implementado |
+| `/login`           | Login (email/senha Supabase; rota escondida)   | ✅ Implementado |
+| `/admin`           | Dashboard admin (só usuário `admin` em `profiles`) | ✅ Implementado |
+| `/admin/usuarios`  | Lista de editores e atalho para novo           | ✅ Implementado |
+| `/admin/usuarios/[id]` | Detalhe do editor + vínculos com igrejas   | ✅ Implementado |
+| `/admin/usuarios/novo` | Criar editor                               | ✅ Implementado |
+
+**Auth:** criar usuários com `npm run bootstrap-users` (ou em **Supabase → Authentication**, ajustando `profiles.role` / `editor_churches`). Rotas `/admin/*` exigem `role = admin` ativo: sem sessão redirecionam para `/login`; com sessão de editor, para `/`. Ainda não há botão de sair na UI — para trocar de usuário, limpar os cookies do site.
 
 ---
 
@@ -162,16 +173,16 @@ Peça ao Copilot: "run QA tests" ou "testar a aplicação"
 **Comportamento esperado:**
 
 - [ ] Aba "Missas" selecionada por padrão
-- [ ] Horários agrupados por dia da semana
+- [ ] Horários agrupados por dia da semana, em accordion: o primeiro dia vem expandido e abrir um dia fecha o anterior
 - [ ] Dias ordenados: Domingo → Sábado
 - [ ] Horários especiais (primeira sexta, etc.) aparecem corretamente
 - [ ] Atividades aparecem na aba "Outros"
 
 **Testes de formatação:**
 
-- [ ] Horário `07:00` → exibe "07:00"
+- [ ] Horário `07:00` → exibe "7h"; `18:30` → exibe "18h30"
 - [ ] Recorrência `first-friday` → exibe "1ª Sexta-feira do mês"
-- [ ] Adoração com `time` e `endTime` → exibe "06:30 - 17:30"
+- [ ] Adoração com `time` e `endTime` → exibe "6h30 às 17h30"
 
 ---
 
@@ -203,8 +214,11 @@ Peça ao Copilot: "run QA tests" ou "testar a aplicação"
 **Comportamento esperado:**
 
 - [ ] Igreja sem `contact` → exibe "Nenhuma informação de contato disponível"
-- [ ] Igreja sem `clergy` → exibe "Nenhum membro do clero cadastrado"
-- [ ] Igreja sem horários → exibe mensagem apropriada em cada aba
+- [ ] Igreja sem `clergy` → exibe "Nenhum clérigo cadastrado."
+- [ ] Igreja sem horários → exibe "Nenhum horário cadastrado."
+- [ ] Igreja sem ministérios → exibe "Nenhum grupo, movimento ou pastoral cadastrado."
+
+> **Divergência conhecida (23/10/2026):** para visitante e para editor não vinculado, as seções vazias mostram só o card com o título, sem mensagem (`EditableSection` retorna `null`). As mensagens acima aparecem apenas para admin e editor vinculado, junto com o botão "Adicionar". Exemplo: `/igreja/catedral-nossa-senhora-dos-prazeres`. Ver pendência em [ARCHITECTURE.md](../ARCHITECTURE.md#estado-atual-e-pendências-atualizado-em-23102026).
 
 ---
 
@@ -250,6 +264,69 @@ Peça ao Copilot: "run QA tests" ou "testar a aplicação"
 
 ---
 
+### CT-011: Login e proteção de rotas
+
+**Página:** `/login`, `/admin`
+
+**Comportamento esperado:**
+
+- [ ] Sem sessão, `/admin` e `/admin/usuarios/novo` redirecionam para `/login`
+- [ ] Enviar o formulário vazio é bloqueado (campos obrigatórios)
+- [ ] Credenciais inválidas → exibe "Email ou senha inválidos"
+- [ ] Login de admin → redireciona para `/admin`
+- [ ] Login de editor → redireciona para `/`
+- [ ] Editor acessando `/admin` → redireciona para `/`
+
+---
+
+### CT-012: Painel admin
+
+**Pré-condição:** logado como admin
+
+**Comportamento esperado:**
+
+- [ ] `/admin` mostra cards com total de igrejas, editores e clérigos; o card "Editores" leva para `/admin/usuarios`
+- [ ] Header destaca o link da página atual; "Voltar ao site" leva para `/`
+- [ ] `/admin/usuarios` lista os editores com nome, email e igrejas vinculadas
+- [ ] Clicar em um editor abre `/admin/usuarios/[id]` com status, data de criação e lista de igrejas (vinculadas marcadas)
+- [ ] Marcar/desmarcar igrejas mostra "Salvar vínculos"; salvar atualiza a lista
+- [ ] "Desativar"/"Ativar" alterna o status (badge "Inativo" na lista)
+- [ ] `/admin/usuarios/novo`: criar editor com nome, email, senha (mín. 6) e igrejas → volta para a lista com o editor novo
+- [ ] Página de admin e de login: título "Admin | Via Fidei" / "Login | Via Fidei" e `<meta name="robots" content="noindex, nofollow">`
+- [ ] Na página de uma igreja: "Gerenciar editores", lápis nas seções e, em seções vazias, mensagem + botão "Adicionar"
+
+> Ao testar criação, usar email descartável (ex: `e2e-editor-<timestamp>@example.com`) e removê-lo depois pela Auth Admin API ou pelo Dashboard.
+
+---
+
+### CT-013: Editor de igreja
+
+**Pré-condição:** logado como editor vinculado a uma igreja (ex: São Paulo Apóstolo)
+
+**Comportamento esperado:**
+
+- [ ] Na igreja vinculada: lápis nas seções; sem "Gerenciar editores"
+- [ ] Em igreja não vinculada: nenhum controle de edição (igual ao visitante)
+- [ ] `/admin` redireciona para `/`
+- [ ] Pela API (sessão do editor), `update profiles set role = 'admin'` ou `is_active` na própria linha falha com `42501`; alterar o próprio `name` funciona
+
+---
+
+### CT-014: Responsividade do admin
+
+**Páginas:** `/admin`, `/admin/usuarios`, `/admin/usuarios/[id]`, `/admin/usuarios/novo`
+
+**Verificações (320, 375, 768, 1024 e 1280 px):**
+
+- [ ] Sem rolagem horizontal
+- [ ] Header: no mobile, só ícones na navegação; a partir de 768 px, ícones + textos
+- [ ] Dashboard: cards em 1 coluna no mobile e 3 a partir de 640 px
+- [ ] Lista de editores: 1 coluna no mobile, 2 no tablet, 3 em telas largas; botão "Novo editor" com largura total no mobile
+- [ ] Email muito longo é truncado na lista e quebra linha no detalhe
+- [ ] Tema claro e escuro
+
+---
+
 ## Checklist de Regressão
 
 Use este checklist antes de cada deploy:
@@ -291,6 +368,10 @@ Use este checklist antes de cada deploy:
 | Igreja em Jatiúca          | http://localhost:3000/igreja/divino-espirito-santo               |
 | Igreja Gruta de Lourdes    | http://localhost:3000/igreja/nossa-senhora-de-lourdes            |
 | Igreja inexistente         | http://localhost:3000/igreja/nao-existe                          |
+| Login                      | http://localhost:3000/login                                      |
+| Dashboard admin            | http://localhost:3000/admin                                      |
+| Editores (admin)           | http://localhost:3000/admin/usuarios                             |
+| Novo editor (admin)        | http://localhost:3000/admin/usuarios/novo                        |
 
 ---
 
@@ -299,3 +380,4 @@ Use este checklist antes de cada deploy:
 | Data       | Versão | Testador | Resultado |
 | ---------- | ------ | -------- | --------- |
 | 2026-02-27 | v0.1.0 | Copilot  | ✅ Passou |
+| 2026-10-23 | v0.1.0 (`feat/create-users`) | Cursor + Playwright MCP | ⚠️ Passou com ressalvas: CT-001 a CT-014 OK, exceto divergência em CT-007 (seções vazias para visitante). Reteste após as correções do code review (migration `010` e actions de admin): CT-012 completo, incluindo "Salvar vínculos" e "Desativar/Ativar", e bloqueio de autopromoção do CT-013 |

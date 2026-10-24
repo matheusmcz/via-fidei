@@ -1,10 +1,11 @@
 import { Footer } from "@/components/footer";
-import { churches } from "@/data/churches";
-import { clergyMembers } from "@/data/clergy";
 import { ClergyPageList } from "@/features/clergy";
 import { PageHeader } from "@/features/churches";
-import { getAllClergyWithChurch, sortClergyByName } from "@/lib/utils";
+import { getAllClergyWithChurch } from "@/lib/supabase/queries";
+import { sortClergyByName } from "@/lib/utils";
 import type { Metadata } from "next";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Clero",
@@ -23,10 +24,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ClergyPage() {
-  const allClergy = sortClergyByName(
-    getAllClergyWithChurch(clergyMembers, churches),
-  );
+export default async function ClergyPage() {
+  const clergyWithChurch = await getAllClergyWithChurch();
+  const allClergy = sortClergyByName(clergyWithChurch);
 
   return (
     <>
