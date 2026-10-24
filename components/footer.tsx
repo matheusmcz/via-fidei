@@ -119,8 +119,8 @@ export function Footer() {
             Arquediocese de Maceió - Dom. Carlos Alberto Breis - OFM
           </p>
           <p className="mt-2 text-xs">
-            Paróquia São Paulo Apóstolo - Salvador Lyra - Pe. Manoel José dos
-            Santos
+            Paróquia São Paulo Apóstolo - Salvador Lyra - Pe. José Elielton da
+            Silva
           </p>
         </div>
       </div>
