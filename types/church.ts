@@ -23,6 +23,12 @@ export type ClergyRole =
 export type ClergyTitle = "padre" | "monsenhor" | "frei" | "dom";
 
 /**
+ * Honor or office shown as a flag on the clergy detail.
+ * Independent from the parish role and the name prefix.
+ */
+export type ClergyHonor = "canon" | "vicar-general" | "prefect-of-studies";
+
+/**
  * Religious order suffix (e.g., OFM, SJ, OP)
  * Uses loose string pattern to allow known values with autocomplete while accepting custom strings
  */
@@ -53,6 +59,8 @@ export interface Clergy {
   role: ClergyRole;
   /** Title prefix (Pe., Mons., etc.) */
   title?: ClergyTitle;
+  /** Honors and offices shown as flags (Cônego, Vigário Geral, etc.) */
+  honors?: ClergyHonor[];
   /** Religious order suffix (OFM, SJ, etc.) */
   suffix?: ReligiousOrderSuffix;
   /** Profile image URL */
@@ -61,7 +69,14 @@ export interface Clergy {
   startDate?: string;
   /** Date when ended service at this church (year or YYYY-MM-DD). Omit for active clergy. */
   endDate?: string;
-  /** Short biography */
+  /** Birth date (year or YYYY-MM-DD) */
+  birthDate?: string;
+  /** Death date (year or YYYY-MM-DD). Omit when the clergy member is living. */
+  deathDate?: string;
+  /**
+   * Biography of the person: formation, ministry and offices.
+   * Do not name parishes here. Current and past assignments belong on church_clergy.
+   */
   bio?: string;
   /** Social media links */
   socialLinks?: {
@@ -164,8 +179,9 @@ export interface ChurchMinistries {
  * Clergy member enriched with church info (for listing pages)
  */
 export interface ClergyWithChurch extends Clergy {
-  churchName: string;
-  churchSlug: string;
+  /** Present only when the clergy member has an active parish assignment */
+  churchName?: string;
+  churchSlug?: string;
 }
 
 export interface Church {

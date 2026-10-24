@@ -10,7 +10,7 @@ A resolução de URL e chave pública está centralizada em [`lib/supabase/env.t
 
 ### Aplicar o schema
 
-1. No [Supabase Dashboard](https://supabase.com/dashboard) → **SQL Editor**, execute os arquivos em `supabase/migrations/` **na ordem numérica** (`001_profiles.sql` … `010_profiles_privilege_escalation.sql`).
+1. No [Supabase Dashboard](https://supabase.com/dashboard) → **SQL Editor**, execute os arquivos em `supabase/migrations/` **na ordem numérica** (`001_profiles.sql` em diante).
 2. Opcional: com [Supabase CLI](https://supabase.com/docs/guides/cli) e projeto linkado: `supabase db push`.
 3. Preencha `.env.local` (ver `.env.example`) e rode `npm run seed` para importar dados a partir dos TS abaixo.
 4. Opcional: `npm run bootstrap-users` cria o primeiro admin e um editor de teste. Refazer o seed gera novos `id` de igrejas — atualize `EDITOR_CHURCH_ID` se usar essa variável.
@@ -23,8 +23,8 @@ A resolução de URL e chave pública está centralizada em [`lib/supabase/env.t
 | `schedule_events` | Horários de missas, adorações e confissões |
 | `activities` | Atividades pastorais |
 | `activity_schedules` | Horários das atividades |
-| `clergy` | Clérigos como entidades independentes |
-| `church_clergy` | Vínculo clérigo-igreja (com datas) |
+| `clergy` | Clérigos como entidades independentes. A `bio` descreve a pessoa (formação, ministério, cargos) e não cita paróquia |
+| `church_clergy` | Vínculo clérigo-igreja, atual ou passado (`start_date`, `end_date`, `is_active`). Paróquias anteriores ficam aqui, no histórico da igreja |
 | `ministries` | Grupos, movimentos e pastorais |
 | `church_ministries` | Vínculo ministério-igreja |
 | `profiles` | Perfis de usuários (admin/editor) |

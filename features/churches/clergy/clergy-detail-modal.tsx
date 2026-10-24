@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ClergyHonorFlags, ClergyVitalInfo } from "@/features/clergy";
 import {
   formatClergyName,
   formatClergyTenure,
@@ -91,9 +92,12 @@ export function ClergyDetailModal({
             {tenure && <span className="ml-1">({tenure})</span>}
           </p>
 
+          <ClergyHonorFlags honors={clergy.honors} />
+          <ClergyVitalInfo clergy={clergy} />
+
           {/* Biografia */}
           {clergy.bio && (
-            <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
+            <p className="text-sm text-muted-foreground mt-4 leading-relaxed whitespace-pre-line">
               {clergy.bio}
             </p>
           )}

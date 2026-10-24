@@ -11,9 +11,11 @@ Quando uma igreja não possui imagem (`imageUrl` ausente), o sistema utiliza aut
 ```
 /public/images/
   via-fidei-logo.png              # Logo / imagem padrão
-  sao-paulo-apostolo.jpg          # Igreja 46
-  pe-manoel-jose-dos-santos.jpg   # Pároco da igreja 46
-  dc-inacio-filho.jpg             # Diácono da igreja 46
+  sao-paulo-apostolo.jpg              # Igreja 46
+  pe-jose-elielton.jpeg                # Pároco atual da igreja 46
+  diac-denis-francisco-menezes.jpeg    # Diácono atual da igreja 46
+  pe-manoel-jose-dos-santos.jpg        # Pároco anterior da igreja 46
+  dc-inacio-filho.jpg                  # Diácono anterior da igreja 46
 ```
 
 ## Convenção de nomes
