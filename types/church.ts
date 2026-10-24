@@ -61,6 +61,10 @@ export interface Clergy {
   startDate?: string;
   /** Date when ended service at this church (year or YYYY-MM-DD). Omit for active clergy. */
   endDate?: string;
+  /** Birth date (year or YYYY-MM-DD) */
+  birthDate?: string;
+  /** Death date (year or YYYY-MM-DD). Omit when the clergy member is living. */
+  deathDate?: string;
   /** Short biography */
   bio?: string;
   /** Social media links */
@@ -164,8 +168,9 @@ export interface ChurchMinistries {
  * Clergy member enriched with church info (for listing pages)
  */
 export interface ClergyWithChurch extends Clergy {
-  churchName: string;
-  churchSlug: string;
+  /** Present only when the clergy member has an active parish assignment */
+  churchName?: string;
+  churchSlug?: string;
 }
 
 export interface Church {

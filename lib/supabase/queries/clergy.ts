@@ -13,6 +13,8 @@ interface DbClergyWithChurch {
   title: string | null;
   suffix: string | null;
   image_url: string | null;
+  birth_date: string | null;
+  death_date: string | null;
   bio: string | null;
   whatsapp: string | null;
   instagram: string | null;
@@ -45,7 +47,6 @@ export async function getAllClergyWithChurch(): Promise<ClergyWithChurch[]> {
 
   for (const c of (data ?? []) as DbClergyWithChurch[]) {
     const activeLink = c.church_clergy.find((cc) => cc.is_active);
-    if (!activeLink) continue;
 
     const socialLinks: ClergyWithChurch["socialLinks"] = {};
     if (c.whatsapp) socialLinks.whatsapp = c.whatsapp;
@@ -55,16 +56,21 @@ export async function getAllClergyWithChurch(): Promise<ClergyWithChurch[]> {
     result.push({
       id: c.id,
       name: c.name,
-      churchId: activeLink.churches.id,
       role: c.role as ClergyRole,
       ...(c.title && { title: c.title as ClergyTitle }),
       ...(c.suffix && { suffix: c.suffix as ReligiousOrderSuffix }),
       ...(c.image_url && { imageUrl: c.image_url }),
-      ...(activeLink.start_date && { startDate: activeLink.start_date }),
+      ...(c.birth_date && { birthDate: c.birth_date }),
+      ...(c.death_date && { deathDate: c.death_date }),
       ...(c.bio && { bio: c.bio }),
       ...(Object.keys(socialLinks).length > 0 && { socialLinks }),
-      churchName: activeLink.churches.name,
-      churchSlug: activeLink.churches.slug,
+      ...(activeLink && {
+        churchId: activeLink.churches.id,
+        ...(activeLink.start_date && { startDate: activeLink.start_date }),
+        ...(activeLink.end_date && { endDate: activeLink.end_date }),
+        churchName: activeLink.churches.name,
+        churchSlug: activeLink.churches.slug,
+      }),
     });
   }
 

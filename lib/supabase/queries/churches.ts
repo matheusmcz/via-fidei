@@ -47,6 +47,8 @@ interface DbChurchClergy {
     title: string | null;
     suffix: string | null;
     image_url: string | null;
+    birth_date: string | null;
+    death_date: string | null;
     bio: string | null;
     whatsapp: string | null;
     instagram: string | null;
@@ -93,6 +95,8 @@ function toClergy(
     ...(c.title && { title: c.title as ClergyTitle }),
     ...(c.suffix && { suffix: c.suffix as ReligiousOrderSuffix }),
     ...(c.image_url && { imageUrl: c.image_url }),
+    ...(c.birth_date && { birthDate: c.birth_date }),
+    ...(c.death_date && { deathDate: c.death_date }),
     ...(db.start_date && { startDate: db.start_date }),
     ...(db.end_date && { endDate: db.end_date }),
     ...(c.bio && { bio: c.bio }),
