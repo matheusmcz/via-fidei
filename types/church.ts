@@ -73,7 +73,10 @@ export interface Clergy {
   birthDate?: string;
   /** Death date (year or YYYY-MM-DD). Omit when the clergy member is living. */
   deathDate?: string;
-  /** Short biography */
+  /**
+   * Biography of the person: formation, ministry and offices.
+   * Do not name parishes here. Current and past assignments belong on church_clergy.
+   */
   bio?: string;
   /** Social media links */
   socialLinks?: {

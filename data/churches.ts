@@ -515,7 +515,7 @@ export const churches: Church[] = [
         endDate: "2026",
         deathDate: "2026",
         imageUrl: "/images/pe-manoel-jose-dos-santos.jpg",
-        bio: "Ordenado em 2005 pela Arquidiocese de Maceió. Pároco da Paróquia São Paulo Apóstolo desde 2011, dedica-se especialmente à pastoral familiar e à formação de lideranças.",
+        bio: "Ordenado em 2005 pela Arquidiocese de Maceió. Dedicou-se especialmente à pastoral familiar e à formação de lideranças.",
         socialLinks: {
           instagram: "@pe.manoeljose",
           facebook: "https://facebook.com/pe.manoeljose",
@@ -530,7 +530,7 @@ export const churches: Church[] = [
         endDate: "2026",
         deathDate: "2026",
         imageUrl: "/images/dc-inacio-filho.jpg",
-        bio: "Diácono permanente ordenado em 2015. Atua na coordenação da pastoral social e no acompanhamento das comunidades de base.",
+        bio: "Diácono permanente ordenado em 2015. Dedicou-se à pastoral social e ao acompanhamento das comunidades de base.",
         socialLinks: {
           whatsapp: "+5582999888777",
         },
@@ -543,7 +543,7 @@ export const churches: Church[] = [
         title: "padre",
         honors: ["canon", "vicar-general", "prefect-of-studies"],
         imageUrl: "/images/pe-jose-elielton.jpeg",
-        bio: "Vigário Geral da Arquidiocese de Maceió, nomeado em maio de 2025 pelo arcebispo Dom Beto Breis. Cargo de alta confiança na administração arquidiocesana.\n\nPrefeito de Estudos do Seminário Maior Nossa Senhora da Assunção, designado em setembro de 2024 para coordenar a formação acadêmica.\n\nAtuou anteriormente como pároco da Paróquia São Sebastião, em Rio Largo, Alagoas.",
+        bio: "Vigário Geral da Arquidiocese de Maceió, nomeado em maio de 2025 pelo arcebispo Dom Beto Breis. Cargo de alta confiança na administração arquidiocesana.\n\nPrefeito de Estudos do Seminário Maior Nossa Senhora da Assunção, designado em setembro de 2024 para coordenar a formação acadêmica.",
       },
       {
         id: "46-clergy-4",
