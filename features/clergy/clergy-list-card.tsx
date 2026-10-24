@@ -1,4 +1,4 @@
-import { cn, formatClergyName, getClergyTitle, getRoleLabel } from "@/lib/utils";
+import { cn, formatClergyName, getRoleLabel } from "@/lib/utils";
 import type { ClergyWithChurch } from "@/types";
 import { User } from "lucide-react";
 import Image from "next/image";
@@ -9,7 +9,6 @@ interface ClergyListCardProps {
 }
 
 export function ClergyListCard({ clergy, onClick }: ClergyListCardProps) {
-  const titleAbbr = getClergyTitle(clergy.title);
   const roleLabel = getRoleLabel(clergy.role);
   const formattedName = formatClergyName(clergy);
 
@@ -43,7 +42,8 @@ export function ClergyListCard({ clergy, onClick }: ClergyListCardProps) {
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate">{formattedName}</p>
         <p className="text-xs text-muted-foreground truncate">
-          {titleAbbr ? `${roleLabel}` : roleLabel} · {clergy.churchName}
+          {roleLabel}
+          {clergy.churchName ? ` · ${clergy.churchName}` : ""}
         </p>
       </div>
     </button>
