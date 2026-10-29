@@ -75,6 +75,6 @@ Para cada item, incluir:
 
 ## Referências
 
-- Arquitetura do projeto: @ARCHITECTURE.md
-- Guia de QA: @docs/QA.md
+- Arquitetura do projeto: @.claude/docs/ARCHITECTURE.md
+- Guia de QA: @.claude/docs/QA.md
 - Regras do projeto: @.cursor/rules/

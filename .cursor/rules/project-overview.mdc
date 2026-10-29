@@ -30,6 +30,6 @@ Via Fidei é uma aplicação web para encontrar igrejas católicas em Maceió/AL
 
 ## Referências
 
-- Arquitetura: @ARCHITECTURE.md
-- QA: @docs/QA.md
-- shadcn/ui: @docs/SHADCN.md
+- Arquitetura: @.claude/docs/ARCHITECTURE.md
+- QA: @.claude/docs/QA.md
+- shadcn/ui: @.claude/docs/SHADCN.md

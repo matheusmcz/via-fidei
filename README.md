@@ -25,10 +25,11 @@ Via Fidei é uma aplicação web desenvolvida para facilitar a busca de igrejas 
 
 | Documento | Conteúdo |
 |-----------|----------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Estrutura de pastas, **diagrama e integração Supabase** (três clientes, env, Vercel, RLS), migrations, fluxo de dados, próximos passos |
-| [docs/QA.md](docs/QA.md) | Casos de teste e checklist de regressão |
+| [ARCHITECTURE.md](.claude/docs/ARCHITECTURE.md) | Estrutura de pastas, **diagrama e integração Supabase** (três clientes, env, Vercel, RLS), migrations, fluxo de dados, controle de acesso e regras de domínio |
+| [docs/board.md](docs/board.md) | Board de demandas: concluído, pendente, decisões e ideias futuras |
+| [QA.md](.claude/docs/QA.md) | Casos de teste e checklist de regressão |
 | [data/README.md](data/README.md) | Tabelas, seed, arquivos legados em `data/` |
-| [docs/SHADCN.md](docs/SHADCN.md) | Uso do shadcn/ui no projeto |
+| [SHADCN.md](.claude/docs/SHADCN.md) | Uso do shadcn/ui no projeto |
 
 ### ✨ Funcionalidades
 
@@ -175,7 +176,7 @@ via-fidei/
 └── public/images/
 ```
 
-Detalhes em [ARCHITECTURE.md](ARCHITECTURE.md).
+Detalhes em [ARCHITECTURE.md](.claude/docs/ARCHITECTURE.md).
 
 ## 🎨 Componentes Principais
 

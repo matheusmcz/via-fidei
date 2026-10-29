@@ -17,10 +17,10 @@ Este documento define os casos de teste, comportamentos esperados e fluxos de va
 
 - Node.js 24.x (ver `package.json` → `engines` e `.nvmrc`)
 - npm ou pnpm instalado
-- Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→010) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../.env.example))
+- Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→010) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../../.env.example))
 - Para os fluxos logados (CT-011 a CT-014): `npm run bootstrap-users` com `ADMIN_*` e `EDITOR_*` no `.env.local`. `EDITOR_CHURCH_ID` precisa ser o `id` atual de uma igreja no banco (os IDs mudam se o seed for refeito); sem ele, o script usa a primeira igreja.
 - Projeto Supabase **ativo**: no plano gratuito ele é pausado após inatividade e o endereço deixa de resolver (`ENOTFOUND` no log, erro 500 na home). Restaurar no Dashboard antes de testar.
-- **Build / Vercel:** URL e chave pública do Supabase disponíveis no ambiente do deploy (Production **e** Preview se houver PRs). Ver [ARCHITECTURE.md](../ARCHITECTURE.md) (seção Supabase + Vercel) e [README](../README.md) (instalação)
+- **Build / Vercel:** URL e chave pública do Supabase disponíveis no ambiente do deploy (Production **e** Preview se houver PRs). Ver [ARCHITECTURE.md](ARCHITECTURE.md) (seção Supabase + Vercel) e [README](../../README.md) (instalação)
 
 ### Iniciar o servidor de desenvolvimento
 
@@ -218,7 +218,7 @@ Peça ao Copilot: "run QA tests" ou "testar a aplicação"
 - [ ] Igreja sem horários → exibe "Nenhum horário cadastrado."
 - [ ] Igreja sem ministérios → exibe "Nenhum grupo, movimento ou pastoral cadastrado."
 
-> **Divergência conhecida (23/10/2026):** para visitante e para editor não vinculado, as seções vazias mostram só o card com o título, sem mensagem (`EditableSection` retorna `null`). As mensagens acima aparecem apenas para admin e editor vinculado, junto com o botão "Adicionar". Exemplo: `/igreja/catedral-nossa-senhora-dos-prazeres`. Ver pendência em [ARCHITECTURE.md](../ARCHITECTURE.md#estado-atual-e-pendências-atualizado-em-23102026).
+> **Divergência conhecida (23/10/2026):** para visitante e para editor não vinculado, as seções vazias mostram só o card com o título, sem mensagem (`EditableSection` retorna `null`). As mensagens acima aparecem apenas para admin e editor vinculado, junto com o botão "Adicionar". Exemplo: `/igreja/catedral-nossa-senhora-dos-prazeres`. Ver pendência em [ARCHITECTURE.md](../../docs/board.md).
 
 ---
 
