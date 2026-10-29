@@ -34,6 +34,12 @@ alwaysApply: false
 - **Não** importar diretamente de `data/churches.ts` nas páginas
 - ISR com `revalidate = 60` para cache
 
+## Biografia do clero
+
+- `bio` descreve a pessoa: formação, ministério e cargos (por exemplo, Vigário Geral)
+- Não citar paróquia, atual ou anterior, na `bio`
+- Paróquia atual e anteriores ficam em `church_clergy` (`start_date`, `end_date`, `is_active`) e aparecem no histórico da igreja
+
 ## Validações
 
 - IDs são UUIDs gerados pelo Supabase

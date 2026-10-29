@@ -14,6 +14,8 @@ import {
   getRoleLabel,
 } from "@/lib/utils";
 import type { ClergyWithChurch } from "@/types";
+import { ClergyHonorFlags } from "./clergy-honor-flags";
+import { ClergyVitalInfo } from "./clergy-vital-info";
 import {
   Church,
   Facebook,
@@ -97,20 +99,25 @@ export function ClergyPageModal({
             {tenure && <span className="ml-1">({tenure})</span>}
           </p>
 
+          <ClergyHonorFlags honors={clergy.honors} />
+          <ClergyVitalInfo clergy={clergy} />
+
           {clergy.bio && (
-            <p className="text-sm text-muted-foreground mt-4 leading-relaxed">
+            <p className="text-sm text-muted-foreground mt-4 leading-relaxed whitespace-pre-line">
               {clergy.bio}
             </p>
           )}
 
-          <Link
-            href={`/igreja/${clergy.churchSlug}`}
-            onClick={() => onOpenChange(false)}
-            className="flex items-center gap-2 mt-4 text-sm font-medium text-foreground hover:underline transition-colors"
-          >
-            <Church className="h-4 w-4" />
-            {clergy.churchName}
-          </Link>
+          {clergy.churchSlug && clergy.churchName && (
+            <Link
+              href={`/igreja/${clergy.churchSlug}`}
+              onClick={() => onOpenChange(false)}
+              className="flex items-center gap-2 mt-4 text-sm font-medium text-foreground hover:underline transition-colors"
+            >
+              <Church className="h-4 w-4" />
+              {clergy.churchName}
+            </Link>
+          )}
 
           {hasSocialLinks && (
             <div className="flex items-center gap-3 mt-6">

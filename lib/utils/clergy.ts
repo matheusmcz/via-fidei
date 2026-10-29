@@ -1,6 +1,7 @@
 import type {
   Church,
   Clergy,
+  ClergyHonor,
   ClergyRole,
   ClergyTitle,
   ClergyWithChurch,
@@ -47,6 +48,31 @@ const TITLE_ABBREVIATIONS: Record<ClergyTitle, string> = {
   frei: "Fr.",
   dom: "Dom",
 };
+
+const HONOR_ORDER: ClergyHonor[] = [
+  "canon",
+  "vicar-general",
+  "prefect-of-studies",
+];
+
+const HONOR_LABELS: Record<ClergyHonor, string> = {
+  canon: "Cônego",
+  "vicar-general": "Vigário Geral",
+  "prefect-of-studies": "Prefeito de Estudos",
+};
+
+/**
+ * Keep known honors in display order and drop anything else.
+ */
+export function getClergyHonors(honors?: readonly string[]): ClergyHonor[] {
+  if (!honors || honors.length === 0) return [];
+  const present = new Set(honors);
+  return HONOR_ORDER.filter((honor) => present.has(honor));
+}
+
+export function getClergyHonorLabel(honor: ClergyHonor): string {
+  return HONOR_LABELS[honor];
+}
 
 /**
  * Get the Portuguese label for a clergy role
@@ -140,6 +166,66 @@ export function getPastClergyMembers(clergy: Clergy[]): Clergy[] {
   return clergy.filter((c) => !!c.endDate);
 }
 
+const FULL_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * True when the value is a real calendar date in YYYY-MM-DD.
+ */
+export function isFullClergyDate(value: string): boolean {
+  const match = value.match(FULL_DATE);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+/**
+ * Year shown next to the birth or death icon (YYYY or the year of YYYY-MM-DD).
+ */
+export function getClergyYear(value: string): string {
+  const match = value.match(/^(\d{4})/);
+  return match ? match[1] : value;
+}
+
+/**
+ * Completed years from a full birth date.
+ * Uses the death date when it is a full date; otherwise uses today.
+ * Returns null when the birth date is missing or only a year.
+ */
+export function getClergyAge(
+  birthDate?: string,
+  deathDate?: string,
+  today: Date = new Date(),
+): number | null {
+  if (!birthDate || !isFullClergyDate(birthDate)) return null;
+
+  const [year, month, day] = birthDate.split("-").map(Number);
+  const end =
+    deathDate && isFullClergyDate(deathDate)
+      ? new Date(
+          Number(deathDate.slice(0, 4)),
+          Number(deathDate.slice(5, 7)) - 1,
+          Number(deathDate.slice(8, 10)),
+        )
+      : today;
+
+  let age = end.getFullYear() - year;
+  const monthDiff = end.getMonth() - (month - 1);
+  if (monthDiff < 0 || (monthDiff === 0 && end.getDate() < day)) {
+    age -= 1;
+  }
+
+  return age >= 0 ? age : null;
+}
+
 /**
  * Format tenure period for a clergy member
  * @param clergy - The clergy member
@@ -176,20 +262,16 @@ export function getAllClergyWithChurch(
 ): ClergyWithChurch[] {
   const churchMap = new Map(churches.map((c) => [c.id, c]));
 
-  return clergyMembers
-    .filter(isActiveClergyMember)
-    .filter(
-      (c): c is Clergy & { churchId: string } =>
-        typeof c.churchId === "string" && c.churchId.length > 0,
-    )
-    .map((clergy) => {
-      const church = churchMap.get(clergy.churchId);
-      return {
-        ...clergy,
-        churchName: church?.name ?? "",
-        churchSlug: church?.slug ?? "",
-      };
-    });
+  return clergyMembers.filter(isActiveClergyMember).map((clergy) => {
+    const church = clergy.churchId ? churchMap.get(clergy.churchId) : undefined;
+    return {
+      ...clergy,
+      ...(church && {
+        churchName: church.name,
+        churchSlug: church.slug,
+      }),
+    };
+  });
 }
 
 /**

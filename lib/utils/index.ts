@@ -1,8 +1,13 @@
 export {
   filterClergyByInitial,
   formatClergyName,
+  getClergyYear,
   formatClergyTenure,
   getActiveClergyMembers,
+  getClergyAge,
+  getClergyHonorLabel,
+  getClergyHonors,
+  isFullClergyDate,
   getAllClergyWithChurch,
   getClergyForChurch,
   getClergyInitials,
