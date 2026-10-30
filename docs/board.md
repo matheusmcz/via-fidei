@@ -2,7 +2,7 @@
 
 Controle das demandas do projeto: o que está em andamento, o que falta fazer, as decisões tomadas e o que já foi entregue.
 
-**Atualizado em:** 30/10/2026 (VF-080)
+**Atualizado em:** 30/10/2026 (orquestração — Fase 1)
 
 ## Como usar
 
@@ -20,7 +20,25 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
 
 ## Em andamento
 
-_Nada em andamento._
+Trabalho em fases, com sessões paralelas coordenadas por uma sessão orquestradora (D12). Cada sessão trabalha em uma branch própria a partir de `develop` e abre um PR; o merge é do usuário.
+
+**Fase 1 — altos + base de testes**
+
+- [ ] **VF-030** · Falha do Supabase vira 404 em cache — sessão A, branch `fix/supabase-erro-nao-vira-404`.
+- [ ] **VF-011** · RLS do editor conforme a D3 (D11) — sessão B, branch `fix/rls-permissoes-editor`, migration `014`.
+- [ ] **VF-036** · Testes automatizados e CI, com a parte do `.gitignore` do VF-062 (D13) — sessão C, branch `chore/testes-e-ci`.
+
+**Próximas fases (planejamento)**
+
+| Fase | Itens | Observação |
+|------|-------|------------|
+| 2 · médios | Banco: VF-082, VF-088, VF-093 | Uma sessão; migrations em sequência a partir da `015` |
+| | Auth e admin: VF-013, VF-083, VF-085, VF-086, VF-091 | Em sequência (mesmos arquivos) |
+| | App: VF-081, VF-090, VF-092 | Em paralelo |
+| | Página da igreja: VF-084, VF-035 | Depois do VF-030 (mesmo arquivo) |
+| | Com o usuário: VF-010, VF-087, VF-089 | Configuração no Supabase e acesso ao CLI |
+| 3 · baixos | VF-012, VF-094, VF-096 (banco); VF-031, VF-032, VF-095, VF-097, VF-037, VF-033, VF-034, VF-039 | |
+| 4 · funcionalidades | VF-020, VF-022, VF-023, VF-024 → VF-021, VF-027 → VF-025, VF-026 | VF-021 depois de VF-083, VF-088 e VF-093; VF-025/026 dependem do VF-003 |
 
 ---
 
@@ -161,6 +179,9 @@ Pontos fortes confirmados na avaliação, a manter:
 | D8 | 30/10/2026 | Toda demanda de código segue o ciclo implementar → revisar (agente `reviewer`) → testar (agente `tester`): severidades crítico, alto, médio e baixo; crítico e alto corrigidos na hora; até 5 rodadas; retrospectiva com 8 ou mais achados, 3 ou mais críticos/altos ou rodada 4. Ver `.claude/rules/dev-workflow.md`. |
 | D9 | 30/10/2026 | Testes: Vitest + Testing Library (unitários e integração) e Playwright (e2e). |
 | D10 | 30/10/2026 | Testes que gravam dados rodam no Supabase local (Docker + CLI do Supabase), nunca no projeto de produção. |
+| D11 | 30/10/2026 | Complemento da D3: o editor também altera a **foto da igreja** (`image_url`) e o **link do Google Maps** (`google_maps_url`), junto com o contato. |
+| D12 | 30/10/2026 | Orquestração: uma sessão orquestradora abre sessões paralelas por fase (crítico → alto → médio → baixo → funcionalidades). Com o `reviewer` aprovado e o `tester` passando, a sessão commita e abre o PR para `develop`; o **merge é sempre do usuário**. O board é atualizado só pelo orquestrador, em PR `docs/` por leva. |
+| D13 | 30/10/2026 | VF-062: `.github` passa a ser versionado (workflows de CI); só `.github/copilot-instructions.md` continua no `.gitignore`. |
 
 ---
 

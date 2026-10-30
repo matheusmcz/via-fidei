@@ -9,7 +9,7 @@
 
 ## Commits
 
-- Só commitar quando o usuário pedir.
+- Só commitar quando o usuário pedir. Exceção (D12): no modo orquestrador, a sessão commita sozinha depois do `reviewer` aprovado e do `tester` passando.
 - Formato Conventional Commits: `<tipo>(<escopo>): <descrição>`
 - Descrição em **português brasileiro**, primeira letra minúscula, sem ponto final, até 72 caracteres na primeira linha.
 - Corpo opcional, explicando o **porquê** (não o quê).
@@ -57,9 +57,10 @@ Explicação quando necessário.
 - [ ] Empty states tratados
 ```
 
-- Abrir com `gh pr create --base develop` (GitHub CLI autenticado na conta `matheusmcz`). Mostrar título e descrição ao usuário antes de criar.
+- Abrir com `gh pr create --base develop` (GitHub CLI autenticado na conta `matheusmcz`). Mostrar título e descrição ao usuário antes de criar (no modo orquestrador, D12, a sessão abre direto e o orquestrador reporta o PR; o merge continua com o usuário).
 
 ## Board
 
 - Ao concluir uma tarefa do [`docs/board.md`](../../docs/board.md), mover o item para **Concluído** no mesmo PR, com a data.
+- **Exceção — modo orquestrador (D12):** quando várias sessões trabalham em paralelo, elas **não** editam o board. A sessão orquestradora move os itens para Concluído e cria os itens vindos da revisão em um PR `docs/` por leva, para evitar conflitos entre PRs paralelos.
 - Problemas encontrados durante o trabalho que não serão resolvidos agora entram no board, em vez de ficarem só na conversa.
