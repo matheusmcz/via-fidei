@@ -274,6 +274,7 @@ Arquivos públicos servidos diretamente.
 
 - `via-fidei-logo.png` - Logo e imagem padrão (placeholder)
 - Imagens de igrejas e clérigos por slug (ex: `sao-paulo-apostolo.jpg`, `pe-manoel-jose-dos-santos.jpg`)
+- Só formatos raster (`.jpg`, `.jpeg`, `.png`). O `next.config.ts` não liga `images.dangerouslyAllowSVG` (desde o VF-080): um `src` `.svg` no `next/image` é servido sem otimização, e o otimizador recusa SVG. Os cabeçalhos do otimizador seguem os padrões do Next (`Content-Disposition: attachment` e CSP com `sandbox` e `script-src 'none'`).
 
 ### `/lib/supabase` - Integração com Supabase
 
@@ -407,6 +408,12 @@ Horários é a informação principal da página: a ausência também informa o 
 ## Dados e manutenção
 
 Os dados de produção vivem no **Supabase**. Para enriquecer igrejas e clérigos: **Table Editor**, SQL ou fluxos futuros de edição (admin/editor). O seed inicial partiu de `data/*.ts`; alterações pontuais podem continuar atualizando os TS e rodando `npm run seed` em ambiente de desenvolvimento (ou editar direto no banco).
+
+### Override do `postcss` no Next
+
+O `package.json` tem `overrides: { "next": { "postcss": "^8.5.23" } }`. O Next 15.5.x fixa `postcss@8.4.31`, que tem advisories altos corrigidos só a partir da 8.5.23, e nenhuma versão 15.x traz o postcss corrigido. O override faz o Next usar o mesmo `postcss` da raiz; o CSS gerado foi conferido idêntico com e sem ele (VF-080). O postcss do Next roda só no build.
+
+Ao atualizar o Next (VF-040): rodar `npm explain postcss`. Se a nova versão já depender de `postcss >= 8.5.23`, remover o override e reinstalar. Se ela fixar uma major diferente do postcss, remover o override antes de atualizar.
 
 ## Pendências e próximos passos
 

@@ -23,11 +23,6 @@ const nextConfig: NextConfig = {
       process.env.SUPABASE_ANON_KEY?.trim() ||
       "",
   },
-  images: {
-    dangerouslyAllowSVG: true,
-    contentDispositionType: "attachment",
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-  },
 };
 
 export default nextConfig;
