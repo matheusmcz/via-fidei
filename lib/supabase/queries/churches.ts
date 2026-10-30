@@ -13,6 +13,7 @@ import type {
   ScheduleEvent,
 } from "@/types";
 import { createPublicClient } from "../public";
+import { findQueryError } from "./query-error";
 
 interface DbScheduleEvent {
   id: string;
@@ -185,16 +186,15 @@ export async function getChurchBySlug(
     .from("churches")
     .select("*")
     .eq("slug", slug)
-    .single();
+    .maybeSingle();
 
-  if (error || !church) return null;
+  // Só "nenhuma linha" vira null (404). Qualquer erro do Supabase (projeto
+  // pausado, rede, falta de permissão/GRANT) é lançado para o ISR manter a
+  // versão em cache. Linhas filtradas pelo RLS não são erro: viram null.
+  if (error) throw error;
+  if (!church) return null;
 
-  const [
-    { data: scheduleEvents },
-    { data: dbActivities },
-    { data: dbClergy },
-    { data: dbMinistries },
-  ] = await Promise.all([
+  const results = await Promise.all([
     supabase
       .from("schedule_events")
       .select("*")
@@ -212,6 +212,16 @@ export async function getChurchBySlug(
       .select("*, ministries(*)")
       .eq("church_id", church.id),
   ]);
+
+  const queryError = findQueryError(results);
+  if (queryError) throw queryError;
+
+  const [
+    { data: scheduleEvents },
+    { data: dbActivities },
+    { data: dbClergy },
+    { data: dbMinistries },
+  ] = results;
 
   const masses = (scheduleEvents ?? [])
     .filter((e: DbScheduleEvent) => e.category === "mass")
