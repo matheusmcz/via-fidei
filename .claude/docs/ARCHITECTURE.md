@@ -45,17 +45,17 @@ Resumo do que está em produção hoje:
 
 | Camada | Descrição |
 |--------|-----------|
-| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](supabase/migrations/) (`001`–`010`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP) — conferir o estado pelo schema, não por `supabase migration list`. |
-| **Chaves públicas** | URL + chave **publishable** ou **anon** (JWT) para o cliente. Resolução central em [`lib/supabase/env.ts`](lib/supabase/env.ts) — ver subseção **Variáveis de ambiente (Supabase + Vercel)** abaixo. `SUPABASE_SERVICE_ROLE_KEY` **apenas** servidor / `npm run seed` ([API keys](https://supabase.com/docs/guides/api/api-keys)). |
-| **Auth** | Supabase Auth + cookies (`@supabase/ssr`); [`middleware.ts`](middleware.ts) na raiz renova a sessão; [`features/auth/`](features/auth/) expõe `AuthProvider` e `useAuth`. |
-| **Leitura pública** | [`lib/supabase/public.ts`](lib/supabase/public.ts) — `createClient` do `@supabase/supabase-js` só com chave pública, **sem** `cookies()`. Usado em [`lib/supabase/queries/`](lib/supabase/queries/) (listagens, detalhes, `generateStaticParams`). |
-| **Sessão no servidor** | [`lib/supabase/server.ts`](lib/supabase/server.ts) — `createServerClient` com cookies (login, `/admin`, Server Actions). |
-| **Cliente browser** | [`lib/supabase/client.ts`](lib/supabase/client.ts) — `createBrowserClient` (`@supabase/ssr`). |
-| **Middleware** | [`lib/supabase/middleware.ts`](lib/supabase/middleware.ts) — usado pelo [`middleware.ts`](middleware.ts) na raiz (refresh de sessão). |
-| **Service role** | [`lib/supabase/service-role.ts`](lib/supabase/service-role.ts) — `createServiceRoleClient()` (sem sessão persistida), **somente servidor** (`server-only` quebra o build se for importado no cliente). Usado pela Server Action `createEditor` para a Auth Admin API (`auth.admin.createUser`), que não aceita a chave pública. |
-| **Seed** | [`scripts/seed.ts`](scripts/seed.ts) + [`scripts/load-env.ts`](scripts/load-env.ts) — `npm run seed` popula o banco a partir de `data/*.ts` (requer `SUPABASE_SERVICE_ROLE_KEY` + URL resolvível por `getSupabaseUrl()`). |
-| **Bootstrap de usuários** | [`scripts/bootstrap-users.ts`](scripts/bootstrap-users.ts) — `npm run bootstrap-users` cria (ou reaproveita) um admin e um editor de teste no Auth, ajusta `profiles.role` e vincula o editor a uma igreja em `editor_churches`. Variáveis `ADMIN_*` / `EDITOR_*` documentadas em [`.env.example`](.env.example). |
-| **Dados em TS** | Arquivos em [`data/`](data/) não são importados pelas páginas; servem de fonte para o seed e referência. |
+| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`013`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026 — conferir o estado pelo schema, não por `supabase migration list`. |
+| **Chaves públicas** | URL + chave **publishable** ou **anon** (JWT) para o cliente. Resolução central em [`lib/supabase/env.ts`](../../lib/supabase/env.ts) — ver subseção **Variáveis de ambiente (Supabase + Vercel)** abaixo. `SUPABASE_SERVICE_ROLE_KEY` **apenas** servidor / `npm run seed` ([API keys](https://supabase.com/docs/guides/api/api-keys)). |
+| **Auth** | Supabase Auth + cookies (`@supabase/ssr`); [`middleware.ts`](../../middleware.ts) na raiz renova a sessão; [`features/auth/`](../../features/auth/) expõe `AuthProvider` e `useAuth`. |
+| **Leitura pública** | [`lib/supabase/public.ts`](../../lib/supabase/public.ts) — `createClient` do `@supabase/supabase-js` só com chave pública, **sem** `cookies()`. Usado em [`lib/supabase/queries/`](../../lib/supabase/queries/) (listagens, detalhes, `generateStaticParams`). |
+| **Sessão no servidor** | [`lib/supabase/server.ts`](../../lib/supabase/server.ts) — `createServerClient` com cookies (login, `/admin`, Server Actions). |
+| **Cliente browser** | [`lib/supabase/client.ts`](../../lib/supabase/client.ts) — `createBrowserClient` (`@supabase/ssr`). |
+| **Middleware** | [`lib/supabase/middleware.ts`](../../lib/supabase/middleware.ts) — usado pelo [`middleware.ts`](../../middleware.ts) na raiz (refresh de sessão). |
+| **Service role** | [`lib/supabase/service-role.ts`](../../lib/supabase/service-role.ts) — `createServiceRoleClient()` (sem sessão persistida), **somente servidor** (`server-only` quebra o build se for importado no cliente). Usado pela Server Action `createEditor` para a Auth Admin API (`auth.admin.createUser`), que não aceita a chave pública. |
+| **Seed** | [`scripts/seed.ts`](../../scripts/seed.ts) + [`scripts/load-env.ts`](../../scripts/load-env.ts) — `npm run seed` popula o banco a partir de `data/*.ts` (requer `SUPABASE_SERVICE_ROLE_KEY` + URL resolvível por `getSupabaseUrl()`). |
+| **Bootstrap de usuários** | [`scripts/bootstrap-users.ts`](../../scripts/bootstrap-users.ts) — `npm run bootstrap-users` cria (ou reaproveita) um admin e um editor de teste no Auth, ajusta `profiles.role` e vincula o editor a uma igreja em `editor_churches`. Variáveis `ADMIN_*` / `EDITOR_*` documentadas em [`.env.example`](../../.env.example). |
+| **Dados em TS** | Arquivos em [`data/`](../../data/) não são importados pelas páginas; servem de fonte para o seed e referência. |
 
 **ISR:** `export const revalidate = 60` nas páginas que listam dados do Supabase.
 
@@ -70,24 +70,24 @@ O Next.js só injeta no **bundle do browser** variáveis com prefixo `NEXT_PUBLI
 | Privilegiada (seed, bootstrap, Auth Admin API, bypass RLS) | `SUPABASE_SERVICE_ROLE_KEY` (nunca `NEXT_PUBLIC_`). Necessária também em runtime no servidor para criar editores pelo painel `/admin/usuarios/novo`. |
 | Bootstrap de usuários (opcional, só local) | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `EDITOR_EMAIL`, `EDITOR_PASSWORD`, `ADMIN_NAME`, `EDITOR_NAME`, `EDITOR_CHURCH_ID` |
 
-[`next.config.ts`](next.config.ts) espelha no build os valores `SUPABASE_*` para `NEXT_PUBLIC_*` quando só a integração preenche os nomes sem prefixo — assim **`createBrowserClient`** e o restante do código continuam funcionando no cliente.
+[`next.config.ts`](../../next.config.ts) espelha no build os valores `SUPABASE_*` para `NEXT_PUBLIC_*` quando só a integração preenche os nomes sem prefixo — assim **`createBrowserClient`** e o restante do código continuam funcionando no cliente.
 
 **Deploy na Vercel:** marque as variáveis para **Production** e **Preview** (deploys de PR). Se estiverem só em Production, o build de Preview falha por ausência de URL/chave no ambiente.
 
-**Local:** copie [`.env.example`](.env.example) para `.env.local`. O `.env.local` não é enviado ao Git; na Vercel as variáveis vêm do painel ou da integração.
+**Local:** copie [`.env.example`](../../.env.example) para `.env.local`. O `.env.local` não é enviado ao Git; na Vercel as variáveis vêm do painel ou da integração.
 
 ### Integração com o código
 
 | Arquivo | Papel |
 |---------|--------|
-| [`lib/supabase/env.ts`](lib/supabase/env.ts) | `getSupabaseUrl()`, `getSupabasePublishableKey()`, `getSupabaseServiceRoleKey()`, `isSupabasePublicConfigured()` |
-| [`lib/supabase/public.ts`](lib/supabase/public.ts) | Cliente anônimo para queries públicas (sem sessão) |
-| [`lib/supabase/server.ts`](lib/supabase/server.ts) | Cliente com cookies (sessão) |
-| [`lib/supabase/client.ts`](lib/supabase/client.ts) | Cliente no browser |
-| [`lib/supabase/service-role.ts`](lib/supabase/service-role.ts) | Cliente privilegiado (service role) — só servidor |
-| [`lib/supabase/queries/churches.ts`](lib/supabase/queries/churches.ts) | `getChurches`, `getChurchBySlug`, `getChurchSlugs` |
-| [`lib/supabase/queries/clergy.ts`](lib/supabase/queries/clergy.ts) | `getAllClergyWithChurch` |
-| [`supabase/migrations/*.sql`](supabase/migrations/) | Schema + RLS (`008_rls_policies.sql`) |
+| [`lib/supabase/env.ts`](../../lib/supabase/env.ts) | `getSupabaseUrl()`, `getSupabasePublishableKey()`, `getSupabaseServiceRoleKey()`, `isSupabasePublicConfigured()` |
+| [`lib/supabase/public.ts`](../../lib/supabase/public.ts) | Cliente anônimo para queries públicas (sem sessão) |
+| [`lib/supabase/server.ts`](../../lib/supabase/server.ts) | Cliente com cookies (sessão) |
+| [`lib/supabase/client.ts`](../../lib/supabase/client.ts) | Cliente no browser |
+| [`lib/supabase/service-role.ts`](../../lib/supabase/service-role.ts) | Cliente privilegiado (service role) — só servidor |
+| [`lib/supabase/queries/churches.ts`](../../lib/supabase/queries/churches.ts) | `getChurches`, `getChurchBySlug`, `getChurchSlugs` |
+| [`lib/supabase/queries/clergy.ts`](../../lib/supabase/queries/clergy.ts) | `getAllClergyWithChurch` |
+| [`supabase/migrations/*.sql`](../../supabase/migrations/) | Schema + RLS (`008_rls_policies.sql`) |
 
 ---
 
@@ -97,7 +97,7 @@ O projeto segue uma arquitetura organizada por **features/domínios**, não por 
 
 ### Raiz do repositório
 
-- [`middleware.ts`](middleware.ts) — integração `@supabase/ssr` para refresh de sessão (matcher exclui assets estáticos)
+- [`middleware.ts`](../../middleware.ts) — integração `@supabase/ssr` para refresh de sessão (matcher exclui assets estáticos)
 
 ### `/app` - App Router (Next.js)
 
@@ -157,6 +157,8 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 - `clergy-page-list.tsx` - Lista com busca e filtro alfabético (Client Component)
 - `clergy-list-card.tsx` - Card compacto de clérigo
 - `clergy-page-modal.tsx` - Modal com detalhes e link para paróquia
+- `clergy-vital-info.tsx` - Nascimento, falecimento e idade (ícones de estrela e cruz; idade só com data completa)
+- `clergy-honor-flags.tsx` - Títulos e funções como flags (Cônego, Vigário Geral, Prefeito de Estudos)
 - `use-clergy-filters.ts` - Hook de busca e filtro por letra inicial
 
 **`/features/churches/editor`** - Experiência de edição na página de igreja
@@ -217,6 +219,10 @@ Código auxiliar reutilizável.
   - `isActiveClergyMember()` / `getActiveClergyMembers()` - Filtra clérigos ativos
   - `getPastClergyMembers()` - Filtra clérigos anteriores
   - `formatClergyTenure()` - Período de atuação ("2021 - Atual")
+  - `getClergyHonors()` / `getClergyHonorLabel()` - Filtra títulos conhecidos na ordem de exibição e traduz ("Cônego")
+  - `isFullClergyDate()` - Verifica se a data é `YYYY-MM-DD` válida
+  - `getClergyYear()` - Ano de uma data (`YYYY` ou `YYYY-MM-DD`)
+  - `getClergyAge()` - Idade em anos completos (até o falecimento, se houver); `null` quando só há o ano
   - `sortClergyByStartDate()` - Ordena por data de início
   - `getClergyForChurch()` - Filtra clérigos de uma igreja específica por churchId
   - `getAllClergyWithChurch()` - Enriquece clérigos com dados da igreja (join por churchId)
@@ -246,6 +252,7 @@ Tipos e interfaces compartilhados.
   - `ClergyWithChurch` - Clérigo enriquecido com dados da igreja (para listagens)
   - `ClergyRole` - Cargo ("parish-priest", "vicar", "deacon", "administrator", "rector")
   - `ClergyTitle` - Título ("padre", "monsenhor", "frei", "dom")
+  - `ClergyHonor` - Título/função exibido como flag ("canon", "vicar-general", "prefect-of-studies"), independente do cargo
   - `ReligiousOrderSuffix` - Ordem religiosa ("OFM", "SJ", "OP", "OSB", etc.)
   - `ChurchMinistry` - Grupo, movimento ou pastoral (`{ id, label, acronym? }`)
   - `ChurchMinistries` - Ministérios por categoria (`{ groups?, movements?, pastorals? }`)
@@ -286,6 +293,9 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `008_rls_policies.sql` - Todas as políticas de Row Level Security
 - `009_profiles_auth_insert_policies.sql` - Reescreve `handle_new_user()` com `search_path` explícito (corrige "Database error creating new user"); as políticas de INSERT que ela cria foram removidas na `010`
 - `010_profiles_privilege_escalation.sql` - Trigger `BEFORE UPDATE` em `profiles` que só deixa admin alterar `role`/`is_active` (exceto chamadas com service role ou SQL Editor); remove as políticas de INSERT da `009`
+- `011_clergy_vital_dates.sql` - Colunas `birth_date`/`death_date` em `clergy` (texto: `YYYY` ou `YYYY-MM-DD`) e atualização do clero da Paróquia São Paulo Apóstolo (idempotente)
+- `012_clergy_honors.sql` - Coluna `honors text[]` em `clergy` com check dos valores permitidos (`canon`, `vicar-general`, `prefect-of-studies`)
+- `013_clergy_bios_without_parishes.sql` - Reescreve as bios sem citar paróquias (vínculos ficam em `church_clergy`)
 
 ### `/scripts`
 
@@ -296,7 +306,7 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 ## Fluxo de dados
 
 1. Dados no **Supabase** (PostgreSQL); acesso controlado por **RLS** (políticas em `008_rls_policies.sql`).
-2. **Variáveis** carregadas em build/runtime conforme [`lib/supabase/env.ts`](lib/supabase/env.ts); [`next.config.ts`](next.config.ts) replica `SUPABASE_*` → `NEXT_PUBLIC_*` para o bundle do browser quando necessário.
+2. **Variáveis** carregadas em build/runtime conforme [`lib/supabase/env.ts`](../../lib/supabase/env.ts); [`next.config.ts`](../../next.config.ts) replica `SUPABASE_*` → `NEXT_PUBLIC_*` para o bundle do browser quando necessário.
 3. **Leituras públicas** (home, detalhe da igreja, clero): `lib/supabase/public.ts` + `queries/*` — sem `cookies()`, role `anon` nas políticas. `generateStaticParams` em `/igreja/[slug]` usa o mesmo cliente público.
 4. **Sessão autenticada**: `lib/supabase/server.ts` (cookies) — login, `/admin`, Server Actions; **`middleware.ts`** na raiz renova tokens antes das rotas.
 5. **ISR** com `revalidate = 60` nas páginas que consomem Supabase.
@@ -304,8 +314,9 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 
 ## Convenções de código
 
-- **Componentes**: PascalCase (`ChurchCard.tsx`)
-- **Utilitários**: camelCase (`cn.ts`, `slugify.ts`)
+- **Componentes**: nome em PascalCase (`ChurchCard`), arquivo em kebab-case (`church-card.tsx`)
+- **Hooks**: prefixo `use`, arquivo em kebab-case (`use-church-filters.ts`)
+- **Utilitários**: funções em camelCase, arquivos em kebab-case (`cn.ts`, `slugify.ts`)
 - **Tipos**: PascalCase (`Church`, `ChurchFilters`)
 - **Pastas**: kebab-case (`features/churches`)
 
@@ -319,117 +330,84 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - Chaves React estáveis (não usar índice de array)
 - Validação de dados de entrada (ex: formato de hora)
 
-## Próximos Passos
+## Controle de acesso
 
-### Estado atual e pendências (atualizado em 23/10/2026)
-
-Validado ponta a ponta com Playwright (fluxos públicos, admin e editor) em 23/10/2026. Detalhes dos casos em [docs/QA.md](docs/QA.md).
-
-**Concluído**
-
-- [x] Dados públicos servidos pelo Supabase (home, `/igreja/[slug]`, `/clero`) com ISR
-- [x] Login em `/login` com redirecionamento por papel; proteção de `/admin/*` no layout
-- [x] Painel admin: dashboard, lista, detalhe (ativar/desativar, vínculos) e criação de editores
-- [x] `createEditor` usando cliente service role para a Auth Admin API (criação validada pelo painel)
-- [x] `npm run bootstrap-users` para criar o admin e um editor de teste
-- [x] Migration `009`: trigger `handle_new_user()` com `search_path` explícito
-- [x] Página da igreja condicionada ao papel: admin vê "Gerenciar editores", lápis e empty states com "Adicionar"; editor vê lápis só nas igrejas vinculadas
-- [x] Telas `/admin/*` responsivas (mobile, tablet e desktop) no padrão visual do site público
-- [x] Migration `010`: trigger impede que usuários não admin alterem o próprio `role`/`is_active` (antes um editor podia virar admin pela API) e remove as políticas de INSERT da `009`, que eram desnecessárias — o trigger `handle_new_user()` pertence ao dono da tabela e não passa pelo RLS. Testado com as contas reais: editor bloqueado (`42501`), admin e service role continuam alterando.
-- [x] Server Actions de editores (`createEditor`, `toggleEditorActive`, `updateEditorChurches`) checam admin ativo
-- [x] `createEditor` remove o usuário do Auth se o perfil ou os vínculos falharem
-- [x] `updateEditorChurches` insere os vínculos novos antes de remover os antigos (uma falha na inserção não apaga os atuais)
-- [x] `lib/supabase/service-role.ts` protegido com `server-only`
-- [x] `bootstrap-users` identifica email duplicado pelo código `email_exists` e mostra o motivo real das falhas
-- [x] Detalhe do editor com consultas em paralelo; título e `noindex` em `/admin` e `/login`
-
-**Pendente — segurança**
-
-- [ ] Confirmar no Supabase (Authentication → Providers) se o cadastro público está desativado; o app não tem tela de cadastro.
-
-**Pendente — funcional**
-
-- [ ] Botão de sair e indicador de sessão: a action `logout` existe em `features/auth/actions.ts`, mas nenhuma tela a usa.
-- [ ] Formulários e Server Actions de edição para editor/admin na página da igreja (botões "Adicionar" e lápis ainda sem fluxo).
-- [ ] Seção vazia para visitante: hoje o card e o título aparecem sem conteúdo (`EditableSection` retorna `null` só para o corpo). Decidir entre ocultar a seção inteira (alvo de UX abaixo) ou exibir a mensagem de vazio (o que o QA CT-007 espera).
-- [ ] Erros de `toggleEditorActive` e `updateEditorChurches` são mostrados com `alert()`; trocar por mensagem na própria tela.
-
-**Pendente — qualidade e dados**
-
-- [ ] Extrair o bloco de logo e marca compartilhado entre `PageHeader` e `AdminHeader`.
-- [ ] Avisos do Next.js no console: `metadataBase` não definido; imagem do logo detectada como LCP sem `priority`.
-- [ ] Dados: só 2 clérigos cadastrados (ambos de São Paulo Apóstolo); contato de São Paulo Apóstolo com valores de exemplo (`(82) 99999-9999`). Conferir o seed.
-
-### Dados e entidades
-
-#### Cadastro e manutenção de dados
-
-Os dados de produção vivem no **Supabase**. Para enriquecer igrejas e clérigos: **Table Editor**, SQL ou fluxos futuros de edição (admin/editor). O seed inicial partiu de `data/*.ts`; alterações pontuais podem continuar atualizando os TS e rodando `npm run seed` em ambiente de desenvolvimento (ou editar direto no banco).
-
-#### Histórico do clero nas igrejas
-
-Novo campo `clergyHistory?: Clergy[]` na interface `Church` (separado de `clergy[]`) para armazenar clérigos que já passaram pela paróquia. `clergyHistory[]` **substitui** a lógica atual de filtrar por `endDate` em `clergy[]`. No banco, alinhar com `church_clergy` (datas) ou coluna dedicada. O componente `ClergyHistory` passaria a consumir esse campo em vez de filtrar `church.clergy`. Sessão dedicada na página de detalhes da igreja.
-
-### Contribuição do usuário
-
-#### Sugestão de correção/contribuição
-
-Botão discreto na página de detalhes da igreja e no modal de detalhes do clérigo com texto semelhante a "Algum dado errado ou deseja contribuir com outras informações? Clique aqui". Modal com formulário contendo: referência da igreja/clérigo (preenchida automaticamente), assunto, descrição e email de contato. Inicialmente sem backend: `console.log` dos dados + toast de confirmação para verificação.
-
-#### Sugestão de cadastro
-
-Botão abaixo do filtro na listagem de igrejas ("Não encontrou a igreja que queria?") e na listagem de clérigos ("Não encontrou o padre que queria?"). Modal com formulário contendo campos da entidade correspondente (com tipos corretos). Campos mínimos obrigatórios para submissão (ex: nome e bairro para igreja, nome e função para clérigo). Inicialmente sem backend: `console.log` dos dados + toast de confirmação para verificação.
-
-### Área administrativa e controle de acesso
-
-#### Modelo de papéis
+### Modelo de papéis
 
 Três papéis no sistema:
 
 | Papel | Acesso | Capacidades |
 |-------|--------|-------------|
 | **Admin** | Rota `/admin` + todas as igrejas | Criar/gerenciar editores, vincular a igrejas, editar dados de qualquer igreja, cadastrar entidades |
-| **Editor de Igreja** | Login + igrejas vinculadas | Navegar normalmente; editar/adicionar dados apenas nas igrejas vinculadas à sua conta |
+| **Editor de Igreja** | Login + igrejas vinculadas | Navegar normalmente; editar/adicionar dados apenas nas igrejas vinculadas à sua conta (ver permissões por campo abaixo) |
 | **Visitante** | Público (anônimo) | Navegar, consultar dados, sugerir correções (futuro) |
 
 Um editor pode ser vinculado a **múltiplas igrejas**. Admin tem acesso de edição em todas.
 
-#### Autenticação (implementado)
+### Permissões de edição por tipo de dado (decidido em 29/10/2026)
+
+| Dado | Quem edita | Motivo |
+|------|-----------|--------|
+| Identidade da igreja: nome, slug, endereço, bairro, tipo | Só admin | Slug faz parte da URL (links compartilhados, SEO); nome e endereço errados confundem quem procura a igreja. No futuro, editor poderá *sugerir* a alteração para aprovação do admin. |
+| Contato, horários, atividades, grupos/movimentos/pastorais | Editor vinculado e admin | Dado operacional que a paróquia conhece melhor e que muda com frequência |
+| Clero: cadastro de clérigos e vínculos com igrejas | Só admin | Um clérigo está em uma igreja por vez; vincular a uma paróquia implica desvincular de outra, que pode não ser do mesmo editor |
+
+**Estado atual (diverge da decisão):** o RLS (`008_rls_policies.sql`) deixa o editor alterar qualquer coluna de `churches` e inserir/alterar/remover vínculos em `church_clergy`. Ajuste registrado no [board](../../docs/board.md).
+
+### Autenticação
 
 - **Login:** `/login` (rota sem link na UI). Email/senha via Supabase Auth (`signInWithPassword`); redirecionamento: admin → `/admin`, editor → `/`.
 - **Sessão:** cookies + `@supabase/ssr`; `middleware.ts` na raiz renova tokens; `AuthProvider` + `useAuth` no cliente para papel e igrejas vinculadas.
 - **Perfis:** tabela `profiles` (roles `admin` | `editor`, padrão `editor`), trigger `handle_new_user()` ao criar usuário em `auth.users`.
 - **Primeiro admin:** `npm run bootstrap-users` (ou criar no Dashboard e `update profiles set role = 'admin'` no SQL Editor).
-- **Logout:** action `logout` implementada, **sem botão na UI** (pendente).
+- **Logout:** action `logout` existe em `features/auth/actions.ts`, mas nenhuma tela a usa.
 
-#### Gestão de editores (admin) — implementado
+### Gestão de editores (admin)
 
 - Dashboard `/admin`, lista `/admin/usuarios`, detalhe `/admin/usuarios/[id]`, novo `/admin/usuarios/novo`.
 - Criação de editor pelo painel usa `createServiceRoleClient()` para `auth.admin.createUser` (email já confirmado) e vincula as igrejas selecionadas; se o perfil ou os vínculos falharem, o usuário é removido do Auth.
 - Todas as Server Actions de `admin-actions.ts` checam se quem chama é admin ativo (`requireAdmin`), além do RLS.
 - Vincular/desvincular igrejas, ativar/desativar editor. Atalho **Gerenciar editores** na página da igreja para admin (`AdminChurchLink`).
 - Layout responsivo com `AdminHeader` (`features/admin`): grids de 1 coluna no mobile, 3 no dashboard a partir de `sm` e 2/3 na lista de editores (`md`/`xl`).
+- Na Vercel, `SUPABASE_SERVICE_ROLE_KEY` precisa estar definida (Production e Preview) para o formulário de novo editor funcionar.
 
-#### Experiência do editor na página de igreja — UI preparada
+### Experiência do editor na página de igreja
 
 - Componentes `EditableSection`, `EditIndicator`, `admin-church-link` condicionam empty state + lápis ao papel e vínculos.
-- **Pendente:** formulários e Server Actions que persistem alterações no Supabase (botões de adicionar/editar ainda sem fluxo completo).
+- Os botões de adicionar/editar ainda não têm formulário nem Server Action (ver board).
 
-#### Comportamento por papel na página de detalhes (alvo de UX)
+### Comportamento por papel na página de detalhes (alvo de UX, decidido em 29/10/2026)
 
 | Seção | Visitante | Editor (vinculado) | Admin |
 |-------|-----------|-------------------|-------|
 | Dados preenchidos | Visualiza | Visualiza + lápis para editar | Visualiza + lápis para editar |
-| Seção vazia | Oculta (**hoje:** card e título aparecem sem conteúdo) | Empty state + botão "Adicionar" | Empty state + botão "Adicionar" |
+| Contato, Clero ou Ministérios vazios | Card inteiro oculto | Empty state + botão "Adicionar" | Empty state + botão "Adicionar" |
+| Horários vazios | Card visível com mensagem curta ("Horários ainda não informados") | Empty state + botão "Adicionar" | Empty state + botão "Adicionar" |
 | Igreja não vinculada | — | Visualiza (somente leitura, igual ao visitante) | — |
 
-#### Cadastros administrativos — pendências
+Horários é a informação principal da página: a ausência também informa o fiel, e é o lugar natural para o futuro "sugerir correção". Nas demais seções, um card vazio parece erro e a mensagem é ruído.
 
-- **Igrejas / clérigos / ministérios em massa:** telas com formulário ou JSON validado contra os tipos — **não implementadas**; dados entram hoje via seed, SQL ou Table Editor.
-- **Editores:** criação via `admin-actions` com cliente service role — validada pelo painel em 23/10/2026 (ambiente local apontando para o projeto Supabase). Na Vercel, `SUPABASE_SERVICE_ROLE_KEY` precisa estar definida (Production e Preview) para o formulário funcionar.
+**Estado atual:** para visitante, todas as seções vazias mostram o card e o título sem conteúdo (`EditableSection` retorna `null` só para o corpo).
 
-### Infraestrutura
+## Regras de domínio
 
-#### Migração de imagens para cloud (V2)
+### Clero
 
-Atualmente as imagens ficam em `/public/images/`. Em V2, considerar migração para storage em nuvem (Vercel Blob, Supabase Storage, Cloudinary).
+- Um clérigo está vinculado a **no máximo uma igreja por vez**; o cargo (vigário, pároco…) pode mudar ao longo do tempo, e cada troca **abre um novo período** (decidido em 29/10/2026).
+- Por ora **não** se guarda o histórico de igrejas anteriores do clérigo: o foco é mostrar o estado atual.
+- Um clérigo pode ter cargo **sem paróquia** (ex.: Pe. Marcio Manoel, reitor do Seminário Maior Nossa Senhora da Assunção).
+- Hoje o cargo fica em `clergy.role`, na pessoa — o ajuste do modelo está no board (VF-025), com perguntas em aberto (VF-003).
+- Clérigos falecidos e clérigos sem igreja ativa continuam aparecendo na listagem e na busca de `/clero`.
+- A `bio` descreve a pessoa (formação, ministério, cargos). Vínculos com igrejas ficam em `church_clergy`, não na bio.
+
+### Abrangência
+
+- Hoje: igrejas de **Maceió/AL**. Objetivo: toda a **Arquidiocese de Maceió** (inclui outros municípios).
+
+## Dados e manutenção
+
+Os dados de produção vivem no **Supabase**. Para enriquecer igrejas e clérigos: **Table Editor**, SQL ou fluxos futuros de edição (admin/editor). O seed inicial partiu de `data/*.ts`; alterações pontuais podem continuar atualizando os TS e rodando `npm run seed` em ambiente de desenvolvimento (ou editar direto no banco).
+
+## Pendências e próximos passos
+
+Tarefas concluídas, pendentes e ideias futuras ficam no board: [`docs/board.md`](../../docs/board.md).

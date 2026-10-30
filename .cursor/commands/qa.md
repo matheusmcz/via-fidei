@@ -1,6 +1,6 @@
 # QA — Testar Aplicação
 
-Execute os testes de QA do Via Fidei conforme definido em `docs/QA.md`.
+Execute os testes de QA do Via Fidei conforme definido em `.claude/docs/QA.md`.
 
 ## Passos
 

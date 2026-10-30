@@ -89,6 +89,6 @@ Adicionar dados em `data/churches.ts`:
 
 ## Referências
 
-- Arquitetura: @ARCHITECTURE.md
+- Arquitetura: @.claude/docs/ARCHITECTURE.md
 - Exemplo de feature completa: `features/churches/clergy/`
 - Exemplo de utilitários: `lib/utils/clergy.ts`
