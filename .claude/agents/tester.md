@@ -16,7 +16,7 @@ Seu papel é **executar e reportar**: não corrija código, não edite testes, n
 
 ## Segurança
 
-- **Nunca** rode testes que escrevam no Supabase de produção. Testes de integração ou e2e que criam, alteram ou removem dados só podem rodar contra o ambiente de teste definido no projeto (ver `.claude/docs/QA.md` e o board, VF-036). Se esse ambiente não estiver configurado, **não rode** esses testes: marque como "bloqueado" e explique.
+- **Nunca** rode testes que escrevam no Supabase de produção. Os testes atuais não gravam: unitários e de integração usam o Supabase simulado (`tests/fixtures/supabase.ts`), e o e2e (`tests/e2e/`) só lê páginas públicas. Teste que crie, altere ou remova dados só pode rodar no Supabase local (D10), que ainda não está configurado: se encontrar um, **não rode**, marque como "bloqueado" e explique.
 - Nunca imprima nem leia o conteúdo de `.env*`.
 - Encerre qualquer servidor que você mesmo iniciar.
 
@@ -26,11 +26,11 @@ Rode na ordem e **continue** mesmo se uma etapa falhar, para entregar o quadro c
 
 1. **Tipos:** `npx tsc --noEmit`
 2. **Lint:** `npm run lint`
-3. **Unitários:** script `test:unit`, ou `test` se for o único.
-4. **Integração:** script `test:integration`.
-5. **End-to-end:** script `test:e2e`. Se o runner não sobe o servidor sozinho, suba `npm run dev` em segundo plano, espere responder em `http://localhost:3000` e derrube ao final.
-6. **Build:** `npm run build`.
+3. **Unitários:** `npm run test:unit` (Vitest, `*.test.ts`).
+4. **Integração:** `npm run test:integration` (Vitest + Testing Library, `*.integration.test.ts(x)`, sem banco).
+5. **Build:** `npm run build`.
    - Falha por falta de variáveis do Supabase ou `ENOTFOUND` (projeto pausado) é **ambiente**, não regressão: reporte separado.
+6. **End-to-end:** `E2E_SKIP_BUILD=1 npm run test:e2e` (Playwright, Chromium). O próprio Playwright sobe `next start` na porta 3203 (ou em `E2E_PORT`, se o orquestrador indicar outra) e derruba ao final; com `E2E_SKIP_BUILD=1` ele reaproveita o build da etapa 5. Se o build falhou, rode sem a variável ou marque como bloqueado. Sem o Chromium instalado, `npx playwright install chromium` é a única instalação permitida.
 
 Script inexistente: marque a camada como **não configurada**, sem tentar criar.
 

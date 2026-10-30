@@ -32,24 +32,35 @@ npm run dev
 
 Acesse as URLs listadas nos casos de teste e verifique os comportamentos esperados.
 
-### Executar validação automatizada (via Copilot)
+### Executar os testes automatizados
 
-Peça ao Copilot: "run QA tests" ou "testar a aplicação"
+```bash
+npm run test:unit         # regras puras de lib/utils (Vitest, node)
+npm run test:integration  # componentes e queries com Supabase simulado (Vitest + Testing Library, jsdom)
+npm run test:e2e          # smoke das páginas públicas (Playwright, Chromium, porta 3203)
+```
 
-#### O que o Copilot testa automaticamente:
+- Nenhum teste grava dados. O e2e lê o Supabase configurado no `.env.local` (ou nos secrets do CI) e precisa do projeto ativo.
+- Primeira vez: `npx playwright install chromium`. O `test:e2e` faz `npm run build` e sobe `next start -p 3203`; com `E2E_SKIP_BUILD=1` reaproveita o build existente.
+- Testes que gravam dados (login real, edição, criação de editor) dependem do Supabase local (D10) e ainda não existem: CT-011 (login com credenciais), CT-012 e CT-013 seguem manuais.
+- O CI (`.github/workflows/ci.yml`) roda lint, tipos, unitários, integração, build e e2e em PR e push para `develop` e `main`.
 
-- ✅ **Page Load**: Todas as rotas carregam sem erros (HTTP 200/404)
-- ✅ **Compilação**: Sem erros de TypeScript ou build
-- ✅ **404 Handler**: Páginas inexistentes retornam 404 corretamente
-- ✅ **SSR**: Páginas renderizam no servidor
+#### Casos cobertos por teste automatizado
 
-#### O que requer teste manual:
+| Caso | Teste | O que cobre |
+|------|-------|-------------|
+| CT-001 | `features/churches/church-list.integration.test.tsx`, `tests/e2e/public-pages.spec.ts` | Ordem alfabética, link do card, filtro por bairro, paginação de 20, busca na home real |
+| CT-002 | `tests/e2e/public-pages.spec.ts` | Página da igreja responde 200 com nome e seção "Clero" |
+| CT-003 | `lib/utils/contact.test.ts`, `features/churches/contact/church-contact-section.integration.test.tsx` | Formatação e links de telefone, WhatsApp, e-mail, Instagram, Facebook e site |
+| CT-004 | `lib/utils/clergy.test.ts`, `features/churches/clergy/clergy-list.integration.test.tsx`, e2e | Só ativos, ordem por cargo, "Pe."/"Mons."/sufixo, período "Atual", histórico |
+| CT-005 | `lib/utils/schedule.test.ts` | Formato de hora, intervalo, recorrência, agrupamento e ordem dos dias (a UI das abas segue manual) |
+| CT-006 | `lib/utils/slugify.test.ts`, `church-list.integration.test.tsx`, e2e | Busca ignorando acento e caixa |
+| CT-007 | `church-list.integration.test.tsx`, `church-contact-section.integration.test.tsx`, `clergy-list.integration.test.tsx`, e2e | Estados vazios da busca, do contato e do clero |
+| CT-010 | `church-contact-section.integration.test.tsx` | `target="_blank"` e `rel="noopener noreferrer"` nos contatos |
+| CT-011 | `tests/e2e/public-pages.spec.ts` | `/login` renderiza com `noindex`; `/admin` sem sessão vai para `/login` |
+| 404 | `tests/e2e/public-pages.spec.ts` | `/igreja/nao-existe` responde 404 com "Igreja não encontrada" |
 
-- 🔧 **Busca**: Filtros são client-side (useState)
-- 🔧 **Filtro por bairro**: Requer interação com dropdown
-- 🔧 **Paginação**: Requer clique nos botões
-- 🔧 **Links externos**: WhatsApp, Instagram, etc.
-- 🔧 **Responsividade**: Verificar em diferentes tamanhos de tela
+Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getAllClergyWithChurch`) têm testes em `lib/supabase/queries/*.integration.test.ts`. Seguem manuais: responsividade (CT-008, CT-014), dark mode, SEO completo (CT-009), links externos reais e os fluxos logados.
 
 ---
 
@@ -381,3 +392,4 @@ Use este checklist antes de cada deploy:
 | ---------- | ------ | -------- | --------- |
 | 2026-02-27 | v0.1.0 | Copilot  | ✅ Passou |
 | 2026-10-23 | v0.1.0 (`feat/create-users`) | Cursor + Playwright MCP | ⚠️ Passou com ressalvas: CT-001 a CT-014 OK, exceto divergência em CT-007 (seções vazias para visitante). Reteste após as correções do code review (migration `010` e actions de admin): CT-012 completo, incluindo "Salvar vínculos" e "Desativar/Ativar", e bloqueio de autopromoção do CT-013 |
+| 2026-10-30 | v0.1.0 (`chore/testes-e-ci`) | Vitest + Playwright | ✅ Primeira execução automatizada: unitários, integração e smoke e2e passando |

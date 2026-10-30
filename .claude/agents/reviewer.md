@@ -50,7 +50,7 @@ Você **não altera nenhum arquivo**. Bash serve só para leitura: `git diff`, `
 
 Na dúvida entre duas severidades, escolha a **menor** e explique o motivo. Não infle severidade.
 
-TDD e testes: enquanto o board indicar a infraestrutura de testes (VF-036) como pendente, falta de teste é no máximo **médio**. Nesse caso, liste quais testes deveriam existir.
+TDD e testes: a infraestrutura existe (Vitest, Testing Library e Playwright; ver `.claude/CLAUDE.md`). Regra de negócio nova sem teste é **alto**; caso de borda faltando é **médio**. A exceção é teste que precisaria gravar no banco: enquanto o Supabase local (D10) não estiver configurado, a falta dele é no máximo **médio**, e você lista quais testes deveriam existir.
 
 ## Formato da resposta
 
