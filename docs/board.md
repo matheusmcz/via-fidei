@@ -24,16 +24,18 @@ Trabalho em fases, com sessões paralelas coordenadas por uma sessão orquestrad
 
 **Fase 1 — altos + base de testes**
 
-- [ ] **VF-030** · Falha do Supabase vira 404 em cache — sessão A, branch `fix/supabase-erro-nao-vira-404`.
-- [ ] **VF-011** · RLS do editor conforme a D3 (D11) — sessão B, branch `fix/rls-permissoes-editor`, migration `014`.
-- [ ] **VF-036** · Testes automatizados e CI, com a parte do `.gitignore` do VF-062 (D13) — sessão C, branch `chore/testes-e-ci`.
+- [ ] **VF-030** · Falha do Supabase vira 404 em cache — sessão A, **PR #24** (aguardando merge).
+- [ ] **VF-011** · RLS do editor conforme a D3 (D11) — sessão B, **PR #25** (aguardando merge; depois, aplicar a `014` e rodar o roteiro de verificação no SQL Editor).
+- [ ] **VF-036** · Testes automatizados e CI, com a parte do `.gitignore` do VF-062 (D13) — sessão C, **PR #26** (aguardando merge; antes, criar os secrets `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no GitHub).
 
 **Próximas fases (planejamento)**
 
 | Fase | Itens | Observação |
 |------|-------|------------|
 | 2 · médios | Banco: VF-082, VF-088, VF-093 | Uma sessão; migrations em sequência a partir da `015` |
-| | Auth e admin: VF-013, VF-083, VF-085, VF-086, VF-091 | Em sequência (mesmos arquivos) |
+| | Auth e admin: VF-013, VF-083, VF-085, VF-086, VF-091, VF-104 | Em sequência (mesmos arquivos) |
+| | Testes: VF-101 e VF-100 | Depois do merge de #24 e #26 |
+| | VF-098 (Supabase local) | Depende de Docker na máquina; no CI o runner já tem |
 | | App: VF-081, VF-090, VF-092 | Em paralelo |
 | | Página da igreja: VF-084, VF-035 | Depois do VF-030 (mesmo arquivo) |
 | | Com o usuário: VF-010, VF-087, VF-089 | Configuração no Supabase e acesso ao CLI |
@@ -99,6 +101,8 @@ Pontos fortes confirmados na avaliação, a manter:
 - [ ] **VF-093 · Auditoria de alterações** · **médio** — quando os editores começarem a gravar (VF-021), não haverá registro de quem alterou o quê. Só `churches`, `clergy` e `profiles` têm `updated_at`; nenhuma tabela tem `updated_by`. Implementar junto ou antes do VF-021 (colunas `updated_by`/`updated_at` ou tabela de log via trigger). Origem: `avaliação`.
 - [ ] **VF-027 · Telas de cadastro administrativo** de igrejas, clérigos e ministérios. Hoje os dados entram por seed, SQL ou Table Editor. Origem: `doc`.
 
+- [ ] **VF-104 · Permissão por tipo de dado na UI da igreja** · **baixo** — `canEditChurch` (`features/auth/auth-provider.tsx`) vale para a igreja inteira, então o editor vinculado vê o lápis no nome da igreja e o lápis/"Adicionar clérigo" na seção Clero, que são só do admin (D3). Pela D15, o editor vê o Clero como o visitante. O banco já recusa a gravação (`014`). Fazer antes do VF-021. Origem: `revisão` (R1-4 em VF-011).
+
 ### Qualidade e confiabilidade
 
 - [ ] **VF-030 · Página da igreja dá 404 quando o Supabase falha** · **alto** — `getChurchBySlug` retorna `null` em qualquer erro, inclusive com o projeto pausado ou fora do ar, e a página chama `notFound()`. Com ISR, uma falha durante a revalidação pode trocar a página de uma igreja que existe por um 404 em cache (visitantes e buscadores). Já a home lança o erro e o Next mantém a versão anterior, então o comportamento é inconsistente. Os erros das 4 consultas paralelas (horários, atividades, clero, ministérios) são ignorados e as seções somem sem aviso. Distinguir "não encontrado" (`PGRST116`) de erro e lançar o erro. Origem: `análise` + `avaliação` · `lib/supabase/queries/churches.ts`.
@@ -118,7 +122,7 @@ Pontos fortes confirmados na avaliação, a manter:
   Os dados atuais estão limpos (conferido em 30/10: nenhum horário inválido, nenhum clérigo com dois vínculos ativos). Fazer antes do VF-021 e junto com o VF-025. Origem: `avaliação`.
 - [ ] **VF-089 · Backup e pausa do plano gratuito** · **médio** — confirmar a política de backup do plano atual do Supabase e agendar um dump periódico (`supabase db dump`) guardado fora do Supabase. No plano gratuito o projeto pausa por inatividade e o site fica sem dados (ver VF-030). Origem: `avaliação`.
 - [ ] **VF-090 · Favicon e ícone Apple com 1 MB** · **médio** — `app/layout.tsx` usa `via-fidei-logo.png` (1.081.277 bytes, servido sem otimização) como `icon` e `apple`, baixado por todo visitante na primeira visita. Também é o fallback das imagens. Gerar ícones dedicados (`app/icon.png` 32 px, `app/apple-icon.png` 180 px) e uma versão leve do logo. Origem: `avaliação` · `app/layout.tsx`, `public/images/via-fidei-logo.png`.
-- [ ] **VF-091 · Admin acessa o banco direto nas páginas** · **médio** — `app/admin/*` monta consultas Supabase dentro das páginas, e `/admin/usuarios/novo` busca as igrejas no cliente pelo cliente do browser, o que contraria a regra de camadas do `dev-workflow.md`. Mover para `lib/supabase/queries/admin.ts` e Server Components, e mover `features/auth/admin-actions.ts` para `features/admin/`. Origem: `avaliação`.
+- [ ] **VF-091 · Admin acessa o banco direto nas páginas** · **médio** — `app/admin/*` monta consultas Supabase dentro das páginas, e `/admin/usuarios/novo` busca as igrejas no cliente pelo cliente do browser, o que contraria a regra de camadas do `dev-workflow.md`. Mover para `lib/supabase/queries/admin.ts` e Server Components, e mover `features/auth/admin-actions.ts` para `features/admin/`. As páginas do admin também ignoram o `error` do Supabase: o dashboard mostra contagem 0, a lista de editores vem vazia e o detalhe do editor cai em `notFound()`; aplicar a regra "erro lança, ausência é `null`" do VF-030. Origem: `avaliação` + `análise` (sessão do VF-030).
 - [ ] **VF-092 · Sem `error.tsx`, `global-error.tsx` e `loading.tsx`** · **médio** — um erro do Supabase cai na página genérica do Next, e não há estado de carregamento nas rotas dinâmicas e do admin. Origem: `avaliação` · `app/`.
 - [ ] **VF-095 · Cliente público e limites de consulta** · **baixo** — `createPublicClient()` não desliga `persistSession`/`autoRefreshToken` e é recriado a cada chamada. As consultas de listagem não têm `.limit`/paginação, e o PostgREST corta em 1000 linhas por padrão, o que passa a importar na expansão para a Arquidiocese (VF-073). Origem: `avaliação` · `lib/supabase/public.ts`, `lib/supabase/queries/`.
 - [ ] **VF-096 · Desempenho do RLS e índices redundantes** · **baixo** — envolver `auth.uid()`, `is_admin()` e `is_editor_of()` em `(select …)` nas políticas, como o Supabase recomenda, para avaliar uma vez por consulta e não por linha. Remover os índices redundantes:
@@ -136,8 +140,15 @@ Pontos fortes confirmados na avaliação, a manter:
 - [ ] **VF-036 · Testes automatizados e CI** · **médio** — não há testes nem workflow. Sugestão inicial: testes unitários de `lib/utils` (horários, clero, contato) e um GitHub Actions com `lint` + `tsc` + `build`. **Habilita o TDD e as camadas de unitários, integração e e2e do agente `tester`** (hoje ele só roda tipos, lint e build). Stack definida na D9: Vitest + Testing Library e Playwright, com scripts `test:unit`, `test:integration` e `test:e2e`. Banco definido na D10: Supabase local via Docker para testes que gravam dados. Era a próxima demanda; a avaliação de 30/10 sugeriu fazer o VF-080 (crítico) antes, e ele foi concluído em 30/10. Origem: `análise` + `decisão`.
 - [ ] **VF-037 · Seed idempotente** · **baixo** — `npm run seed` usa `insert`; rodar duas vezes gera erros de slug duplicado e dados parciais. Origem: `análise` · `scripts/seed.ts`.
 - [ ] **VF-038 · Avaliar tipos de coluna para datas e horários** — `time`, `end_time` e as datas do clero são `text`. Hoje é intencional para aceitar só o ano. Reavaliar se surgir necessidade de ordenar ou filtrar por data. Origem: `análise`.
-- [ ] **VF-039 · Migrar `next lint` para o ESLint CLI** — `next lint` está obsoleto e foi removido no Next 16. Origem: `análise`.
+- [ ] **VF-039 · Migrar `next lint` para o ESLint CLI** — `next lint` está obsoleto e foi removido no Next 16. Hoje ele só verifica as pastas padrão (`app`, `components`, `lib`, `pages`, `src`): `features/` e `tests/` ficam de fora. Origem: `análise`.
 - [ ] **VF-040 · Atualizar dependências** — o Next já está na 15.5.28 (VF-080). Aqui fica o restante: `@supabase/supabase-js` 2.99 → 2.118, `@supabase/ssr` 0.9 → 0.12 e Radix; avaliar Next 16 e `lucide-react` 1.x à parte. Ao subir o Next, tratar o override `overrides.next.postcss`: rodar `npm explain postcss`, remover o override se o Next novo já depender de `postcss >= 8.5.23` e removê-lo antes da atualização se ela fixar outra major do postcss (ver "Override do `postcss` no Next" no `ARCHITECTURE.md`). Origem: `análise` + `revisão` (R1-1 em VF-080).
+
+- [ ] **VF-098 · Testes de integração e e2e com Supabase local** (D10) · **médio** — Docker + `supabase start`; aplicar as migrations do zero (valida também o VF-087); seed mínimo de teste separado do `npm run seed`; `.env.test`; projeto Vitest `db` (`test:db`). Cobrir RLS (incluindo a `014`), o trigger da `010`, as Server Actions de admin e e2e logado (CT-011 a CT-013). No CI, job com `supabase/setup-cli`. Os roteiros de `supabase/tests/` precisam virar pgTAP ou mudar de pasta, porque o `supabase test db` espera pgTAP. Origem: `análise` (sessão do VF-036) + `revisão` (VF-011).
+- [ ] **VF-099 · `formatInstagramHandle` devolve `@https` para URL** · **baixo** — com `https://instagram.com/paroquia` a regex sem âncora devolve `@https`; o CT-003 espera `@paroquia`. Os dados atuais usam `@handle`, então não aparece no site. Ao corrigir, trocar o `it.fails` de `lib/utils/contact.test.ts` por `it`. Origem: `análise` (achado pelos testes do VF-036) · `lib/utils/contact.ts`.
+- [ ] **VF-100 · Cliente Supabase simulado não registra filtros** · **baixo** — `tests/fixtures/supabase.ts` aceita qualquer cadeia de chamadas sem guardar `{ table, method, args }`, então não dá para verificar `eq("slug")`/`eq("church_id")`. Fazer antes do VF-101. Origem: `revisão` (R1-4 em VF-036).
+- [ ] **VF-101 · Testes de `getChurchBySlug` e `findQueryError`** · **médio** — separação de `schedule_events` por categoria, agrupamento de ministérios, `churchId` no clero, `null` para igreja inexistente, erro lançado na consulta principal e nas 4 paralelas; casos de `findQueryError` (lista vazia, primeiro erro, erro no último). Depois do merge de #24 e #26. Origem: `revisão` (VF-030 e VF-036).
+- [ ] **VF-102 · Busca e filtro de bairro da home sem rótulo acessível** · **baixo** — o campo "Buscar igreja..." e o select de bairro não têm `label`/`aria-label`. Origem: `análise` (testes do VF-036) · `features/churches/`.
+- [ ] **VF-103 · `useChurchFilters` altera a prop `churches`** · **baixo** — sem filtro, ordena com `.sort()` o array recebido; trocar por `[...result].sort(...)`. Origem: `análise` (testes do VF-036).
 
 ### Dados e conteúdo
 
@@ -171,7 +182,7 @@ Pontos fortes confirmados na avaliação, a manter:
 |----|------|---------|
 | D1 | 29/10/2026 | Um clérigo está vinculado a **no máximo uma igreja por vez**; o cargo pode mudar com o tempo (ex.: vigário → pároco) e cada troca **abre um novo período**. Por ora **não** se guarda o histórico de igrejas anteriores do clérigo: o foco é o estado atual. Um clérigo pode ter cargo **sem paróquia** (ex.: Pe. Marcio Manoel, reitor do Seminário Maior Nossa Senhora da Assunção). Pontos em aberto no VF-003. |
 | D2 | 29/10/2026 | Clérigos **falecidos** e **sem igreja** continuam aparecendo na listagem e na busca de `/clero`. |
-| D3 | 29/10/2026 | Permissões do editor: edita contato, horários, atividades e grupos/movimentos/pastorais das igrejas vinculadas. Identidade da igreja (nome, slug, endereço, bairro, tipo) e clero (cadastro e vínculos) são só do admin. |
+| D3 | 29/10/2026 | Permissões do editor: edita contato, horários, atividades e grupos/movimentos/pastorais das igrejas vinculadas. Identidade da igreja (nome, slug, endereço, bairro, tipo) e clero (cadastro e vínculos) são só do admin. Complementada pela D11, D14 e D15. |
 | D4 | 29/10/2026 | Seção vazia para o visitante: Contato, Clero e Ministérios vazios ficam ocultos; Horários vazio mostra "Horários ainda não informados". |
 | D5 | 29/10/2026 | Abrangência: por ora só Maceió; o objetivo é toda a Arquidiocese de Maceió. |
 | D6 | 29/10/2026 | Fluxo de trabalho mantido: Conventional Commits em português, branch por entrega, PR para `develop` e de `develop` para `main`. |
@@ -182,6 +193,8 @@ Pontos fortes confirmados na avaliação, a manter:
 | D11 | 30/10/2026 | Complemento da D3: o editor também altera a **foto da igreja** (`image_url`) e o **link do Google Maps** (`google_maps_url`), junto com o contato. |
 | D12 | 30/10/2026 | Orquestração: uma sessão orquestradora abre sessões paralelas por fase (crítico → alto → médio → baixo → funcionalidades). Com o `reviewer` aprovado e o `tester` passando, a sessão commita e abre o PR para `develop`; o **merge é sempre do usuário**. O board é atualizado só pelo orquestrador, em PR `docs/` por leva. |
 | D13 | 30/10/2026 | VF-062: `.github` passa a ser versionado (workflows de CI); só `.github/copilot-instructions.md` continua no `.gitignore`. |
+| D14 | 30/10/2026 | Grupos, movimentos e pastorais: o **catálogo** (`ministries`) é só do admin; o editor **vincula e desvincula** itens existentes à igreja dele, sem criar itens novos. |
+| D15 | 30/10/2026 | Na página da igreja, o editor vinculado vê a seção **Clero como o visitante**: sem lápis nem "Adicionar"; vazia, a seção some (D4). |
 
 ---
 
