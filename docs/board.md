@@ -2,7 +2,7 @@
 
 Controle das demandas do projeto: o que está em andamento, o que falta fazer, as decisões tomadas e o que já foi entregue.
 
-**Atualizado em:** 30/10/2026 (avaliação técnica)
+**Atualizado em:** 30/10/2026 (VF-080)
 
 ## Como usar
 
@@ -32,7 +32,7 @@ Prioridade sugerida, da mais urgente para a menos urgente. A decisão final é d
 
 | Severidade | Itens |
 |-----------|-------|
-| **Crítico** | VF-080 (Next.js com vulnerabilidades conhecidas, inclusive RCE com SVG) |
+| **Crítico** | _Nenhum._ O VF-080 foi concluído em 30/10. |
 | **Alto** | VF-011 (editor altera identidade da igreja e clero via API) · VF-030 (falha do Supabase vira 404 em cache) |
 | **Médio** | VF-081 (cabeçalhos de segurança) · VF-082 (papel padrão `editor`) · VF-083 (validação nas Server Actions) · VF-013 (editor desativado entra) · VF-010 (cadastro público) · VF-084 (5 consultas e render duplicado na página da igreja) · VF-085 (AuthProvider carrega em dobro) · VF-086 (middleware consulta o Auth a cada requisição) · VF-087 (migrations sem histórico) · VF-088 (integridade no banco antes dos formulários) · VF-089 (backup e pausa do plano gratuito) · VF-090 (favicon de 1 MB) · VF-091 (admin acessa o banco direto) · VF-092 (sem `error.tsx`/`loading.tsx`) · VF-093 (auditoria de alterações) · VF-035 (tipos gerados) · VF-036 (testes e CI) |
 | **Baixo** | VF-012 · VF-094 · VF-095 · VF-096 · VF-097 · VF-031 · VF-032 · VF-037 |
@@ -59,13 +59,6 @@ Pontos fortes confirmados na avaliação, a manter:
 
 ### Segurança
 
-- [ ] **VF-080 · Atualizar o Next.js para 15.5.28 e rodar `npm audit fix`** · **crítico**. A versão 15.5.9 instalada tem dezenas de advisories corrigidos até a 15.5.28, entre eles:
-  - RCE não autenticado no Image Optimization API com SVG (o projeto liga `images.dangerouslyAllowSVG` sem usar SVG);
-  - DoS em Server Actions e Server Components;
-  - bypass de middleware;
-  - cache poisoning de ISR.
-
-  Na Vercel, a otimização de imagens roda na infraestrutura dela, o que reduz parte do risco do otimizador, mas os demais vetores continuam. O `npm audit --omit=dev` lista ainda `sharp`, `postcss`, `ws`, `picomatch`, `nanoid` e `source-map-js` (altos, com correção disponível). Remover `dangerouslyAllowSVG` do `next.config.ts`. A atualização fica dentro da faixa `^15` do `package.json`. Origem: `avaliação` · `package.json`, `next.config.ts`.
 - [ ] **VF-081 · Cabeçalhos de segurança** · **médio** — não há CSP, `frame-ancestors`/`X-Frame-Options` (permite clickjacking em `/login` e `/admin`), `Referrer-Policy`, `Permissions-Policy` nem `X-Content-Type-Options`. Configurar em `headers()` no `next.config.ts`; a CSP precisa considerar o script inline de tema (hash ou nonce) e o Vercel Analytics. Origem: `avaliação`.
 - [ ] **VF-082 · Papel padrão do perfil é `editor`** · **médio** — `profiles.role` tem default `'editor'` e `is_active` default `true`. Todo usuário criado no Auth, por qualquer caminho, vira editor ativo. Hoje não ganha acesso a nenhuma igreja, mas fere o menor privilégio. Criar o perfil sem permissão (ex.: `is_active = false`) e deixar `createEditor`/`bootstrap-users` ativarem. Relacionado ao VF-010. Origem: `avaliação` · `001_profiles.sql`, `009_profiles_auth_insert_policies.sql`.
 - [ ] **VF-083 · Validação de entrada nas Server Actions de admin** · **médio** — não há schema de validação (formato de email, tamanho de nome e senha, UUIDs em `churchIds`/`editorId`). `toggleEditorActive` aceita o ID de um admin, inclusive o próprio, o que permite se trancar fora do painel. `updateEditorChurches` aceita o ID de um admin. Validar com schema (ex.: zod) e restringir o alvo a `role = 'editor'`. Origem: `avaliação` · `features/auth/admin-actions.ts`.
@@ -122,11 +115,11 @@ Pontos fortes confirmados na avaliação, a manter:
 - [ ] **VF-033 · Sitemap e robots** — o README promete "Sitemap automático", mas não existem `app/sitemap.ts` nem `app/robots.ts`. Origem: `análise`.
 - [ ] **VF-034 · Extrair o bloco de logo e marca** compartilhado entre `PageHeader` e `AdminHeader`. Origem: `doc`.
 - [ ] **VF-035 · Tipos gerados do banco** (`supabase gen types`) · **médio** — o cliente Supabase não é tipado, então `data` chega como `any`; hoje as linhas são descritas por interfaces `Db*` escritas à mão, e o mapeamento de igreja está duplicado em `getChurches` e `getChurchBySlug`. Origem: `análise` · `lib/supabase/queries/`.
-- [ ] **VF-036 · Testes automatizados e CI** · **médio** — não há testes nem workflow. Sugestão inicial: testes unitários de `lib/utils` (horários, clero, contato) e um GitHub Actions com `lint` + `tsc` + `build`. **Habilita o TDD e as camadas de unitários, integração e e2e do agente `tester`** (hoje ele só roda tipos, lint e build). Stack definida na D9: Vitest + Testing Library e Playwright, com scripts `test:unit`, `test:integration` e `test:e2e`. Banco definido na D10: Supabase local via Docker para testes que gravam dados. Era a próxima demanda; a avaliação de 30/10 sugere fazer o VF-080 (crítico) antes. Origem: `análise` + `decisão`.
+- [ ] **VF-036 · Testes automatizados e CI** · **médio** — não há testes nem workflow. Sugestão inicial: testes unitários de `lib/utils` (horários, clero, contato) e um GitHub Actions com `lint` + `tsc` + `build`. **Habilita o TDD e as camadas de unitários, integração e e2e do agente `tester`** (hoje ele só roda tipos, lint e build). Stack definida na D9: Vitest + Testing Library e Playwright, com scripts `test:unit`, `test:integration` e `test:e2e`. Banco definido na D10: Supabase local via Docker para testes que gravam dados. Era a próxima demanda; a avaliação de 30/10 sugeriu fazer o VF-080 (crítico) antes, e ele foi concluído em 30/10. Origem: `análise` + `decisão`.
 - [ ] **VF-037 · Seed idempotente** · **baixo** — `npm run seed` usa `insert`; rodar duas vezes gera erros de slug duplicado e dados parciais. Origem: `análise` · `scripts/seed.ts`.
 - [ ] **VF-038 · Avaliar tipos de coluna para datas e horários** — `time`, `end_time` e as datas do clero são `text`. Hoje é intencional para aceitar só o ano. Reavaliar se surgir necessidade de ordenar ou filtrar por data. Origem: `análise`.
 - [ ] **VF-039 · Migrar `next lint` para o ESLint CLI** — `next lint` está obsoleto e foi removido no Next 16. Origem: `análise`.
-- [ ] **VF-040 · Atualizar dependências** — a correção urgente do Next está no VF-080. Aqui fica o restante: `@supabase/supabase-js` 2.99 → 2.118, `@supabase/ssr` 0.9 → 0.12 e Radix; avaliar Next 16 e `lucide-react` 1.x à parte. Origem: `análise`.
+- [ ] **VF-040 · Atualizar dependências** — o Next já está na 15.5.28 (VF-080). Aqui fica o restante: `@supabase/supabase-js` 2.99 → 2.118, `@supabase/ssr` 0.9 → 0.12 e Radix; avaliar Next 16 e `lucide-react` 1.x à parte. Ao subir o Next, tratar o override `overrides.next.postcss`: rodar `npm explain postcss`, remover o override se o Next novo já depender de `postcss >= 8.5.23` e removê-lo antes da atualização se ela fixar outra major do postcss (ver "Override do `postcss` no Next" no `ARCHITECTURE.md`). Origem: `análise` + `revisão` (R1-1 em VF-080).
 
 ### Dados e conteúdo
 
@@ -175,6 +168,7 @@ Pontos fortes confirmados na avaliação, a manter:
 
 ### Outubro/2026
 
+- [x] **VF-080** · Next.js 15.5.9 → 15.5.28 e `npm audit` zerado (produção e dev): `npm audit fix` (sharp 0.35, postcss, ws, nanoid, picomatch, source-map-js…), `overrides` para o Next usar `postcss` ≥ 8.5.23, `tsx` 4.23 (esbuild 0.28) e remoção do bloco `images` (`dangerouslyAllowSVG`) do `next.config.ts` — PR #22 (30/10)
 - [x] **VF-004** · Fluxo implementar → revisar → testar: agentes `reviewer` e `tester`, regra `dev-workflow.md` e `APRENDIZADOS.md` — PR #20 (30/10)
 - [x] **VF-002** · Projeto preparado para o Claude Code: `.claude/CLAUDE.md`, regras, docs em `.claude/docs/` e este board — PR #19 (30/10)
 - [x] **VF-063** · GitHub CLI (`gh`) instalado e autenticado na conta `matheusmcz` (30/10)
