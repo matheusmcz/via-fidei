@@ -45,7 +45,7 @@ Resumo do que está em produção hoje:
 
 | Camada | Descrição |
 |--------|-----------|
-| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`010`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP) — conferir o estado pelo schema, não por `supabase migration list`. |
+| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`013`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026 — conferir o estado pelo schema, não por `supabase migration list`. |
 | **Chaves públicas** | URL + chave **publishable** ou **anon** (JWT) para o cliente. Resolução central em [`lib/supabase/env.ts`](../../lib/supabase/env.ts) — ver subseção **Variáveis de ambiente (Supabase + Vercel)** abaixo. `SUPABASE_SERVICE_ROLE_KEY` **apenas** servidor / `npm run seed` ([API keys](https://supabase.com/docs/guides/api/api-keys)). |
 | **Auth** | Supabase Auth + cookies (`@supabase/ssr`); [`middleware.ts`](../../middleware.ts) na raiz renova a sessão; [`features/auth/`](../../features/auth/) expõe `AuthProvider` e `useAuth`. |
 | **Leitura pública** | [`lib/supabase/public.ts`](../../lib/supabase/public.ts) — `createClient` do `@supabase/supabase-js` só com chave pública, **sem** `cookies()`. Usado em [`lib/supabase/queries/`](../../lib/supabase/queries/) (listagens, detalhes, `generateStaticParams`). |
@@ -157,6 +157,8 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 - `clergy-page-list.tsx` - Lista com busca e filtro alfabético (Client Component)
 - `clergy-list-card.tsx` - Card compacto de clérigo
 - `clergy-page-modal.tsx` - Modal com detalhes e link para paróquia
+- `clergy-vital-info.tsx` - Nascimento, falecimento e idade (ícones de estrela e cruz; idade só com data completa)
+- `clergy-honor-flags.tsx` - Títulos e funções como flags (Cônego, Vigário Geral, Prefeito de Estudos)
 - `use-clergy-filters.ts` - Hook de busca e filtro por letra inicial
 
 **`/features/churches/editor`** - Experiência de edição na página de igreja
@@ -217,6 +219,10 @@ Código auxiliar reutilizável.
   - `isActiveClergyMember()` / `getActiveClergyMembers()` - Filtra clérigos ativos
   - `getPastClergyMembers()` - Filtra clérigos anteriores
   - `formatClergyTenure()` - Período de atuação ("2021 - Atual")
+  - `getClergyHonors()` / `getClergyHonorLabel()` - Filtra títulos conhecidos na ordem de exibição e traduz ("Cônego")
+  - `isFullClergyDate()` - Verifica se a data é `YYYY-MM-DD` válida
+  - `getClergyYear()` - Ano de uma data (`YYYY` ou `YYYY-MM-DD`)
+  - `getClergyAge()` - Idade em anos completos (até o falecimento, se houver); `null` quando só há o ano
   - `sortClergyByStartDate()` - Ordena por data de início
   - `getClergyForChurch()` - Filtra clérigos de uma igreja específica por churchId
   - `getAllClergyWithChurch()` - Enriquece clérigos com dados da igreja (join por churchId)
@@ -246,6 +252,7 @@ Tipos e interfaces compartilhados.
   - `ClergyWithChurch` - Clérigo enriquecido com dados da igreja (para listagens)
   - `ClergyRole` - Cargo ("parish-priest", "vicar", "deacon", "administrator", "rector")
   - `ClergyTitle` - Título ("padre", "monsenhor", "frei", "dom")
+  - `ClergyHonor` - Título/função exibido como flag ("canon", "vicar-general", "prefect-of-studies"), independente do cargo
   - `ReligiousOrderSuffix` - Ordem religiosa ("OFM", "SJ", "OP", "OSB", etc.)
   - `ChurchMinistry` - Grupo, movimento ou pastoral (`{ id, label, acronym? }`)
   - `ChurchMinistries` - Ministérios por categoria (`{ groups?, movements?, pastorals? }`)
@@ -286,6 +293,9 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `008_rls_policies.sql` - Todas as políticas de Row Level Security
 - `009_profiles_auth_insert_policies.sql` - Reescreve `handle_new_user()` com `search_path` explícito (corrige "Database error creating new user"); as políticas de INSERT que ela cria foram removidas na `010`
 - `010_profiles_privilege_escalation.sql` - Trigger `BEFORE UPDATE` em `profiles` que só deixa admin alterar `role`/`is_active` (exceto chamadas com service role ou SQL Editor); remove as políticas de INSERT da `009`
+- `011_clergy_vital_dates.sql` - Colunas `birth_date`/`death_date` em `clergy` (texto: `YYYY` ou `YYYY-MM-DD`) e atualização do clero da Paróquia São Paulo Apóstolo (idempotente)
+- `012_clergy_honors.sql` - Coluna `honors text[]` em `clergy` com check dos valores permitidos (`canon`, `vicar-general`, `prefect-of-studies`)
+- `013_clergy_bios_without_parishes.sql` - Reescreve as bios sem citar paróquias (vínculos ficam em `church_clergy`)
 
 ### `/scripts`
 

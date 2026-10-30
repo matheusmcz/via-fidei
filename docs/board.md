@@ -2,7 +2,7 @@
 
 Controle das demandas do projeto: o que está em andamento, o que falta fazer, as decisões tomadas e o que já foi entregue.
 
-**Atualizado em:** 29/10/2026
+**Atualizado em:** 30/10/2026
 
 ## Como usar
 
@@ -18,10 +18,6 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
 
 ## Em andamento
 
-- [ ] **VF-001 · Clero da Paróquia São Paulo Apóstolo** — branch `feat/clero-sao-paulo-apostolo` (6 commits, ainda não está na `develop`).
-  - Entregue na branch: migrations `011` (nascimento/falecimento), `012` (títulos: Cônego, Vigário Geral, Prefeito de Estudos) e `013` (bios sem paróquias); componentes `ClergyVitalInfo` e `ClergyHonorFlags`; Pe. José Elielton da Silva e Diác. Denis Francisco Menezes no clero da paróquia; Pe. Manoel José dos Santos e Diác. Inácio Filho no histórico.
-  - Falta: abrir PR para `develop`; confirmar se as migrations `011`–`013` já foram aplicadas no Supabase de produção.
-  - Após o merge: atualizar `ARCHITECTURE.md` (lista de migrations até `013`, componentes novos de `features/clergy`), `QA.md` e `README.md` (faixa de migrations `001`→`013`).
 - [ ] **VF-002 · Preparar o projeto para o Claude Code** — branch `chore/claude-setup`.
   - `.claude/CLAUDE.md`, regras em `.claude/rules/`, docs movidos para `.claude/docs/` e este board.
 
@@ -84,7 +80,6 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
 - [ ] **VF-060 · Node local na versão 24** — a máquina local roda Node 22; `engines` e `.nvmrc` pedem 24.x. Origem: `análise`.
 - [ ] **VF-061 · `package-lock.json` solto na pasta home** (`~/package-lock.json`) — faz o Next inferir a raiz errada do workspace (aviso no lint e no build). Origem: `análise`.
 - [ ] **VF-062 · Destino do `.github/copilot-instructions.md`** — desatualizado (ainda fala em dados estáticos e escopo só de MVP) e fora do Git, porque `.github` está no `.gitignore`. Decidir: remover, atualizar ou deixar. Atenção: esse `.gitignore` também bloqueia futuros workflows de CI (VF-036). Origem: `análise`.
-- [ ] **VF-063 · Instalar o GitHub CLI (`gh`)** para criar PRs pelo terminal. Origem: `análise`.
 - [ ] **VF-064 · Portar comandos e agentes do Cursor para o Claude Code** — `.cursor/commands` (commit, create-pr, qa, add-church, build-check…), `.cursor/agents` (data-auditor, qa-tester, reviewer, verifier) e `.cursor/skills` como skills e agents em `.claude/`. Origem: `análise`.
 
 ---
@@ -117,6 +112,8 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
 
 ### Outubro/2026
 
+- [x] **VF-063** · GitHub CLI (`gh`) instalado e autenticado na conta `matheusmcz` (30/10)
+- [x] **VF-001** · Clero da Paróquia São Paulo Apóstolo — PR #18 (24/10): migrations `011` (nascimento/falecimento), `012` (títulos: Cônego, Vigário Geral, Prefeito de Estudos) e `013` (bios sem paróquias); componentes `ClergyVitalInfo` e `ClergyHonorFlags`; Pe. José Elielton da Silva e Diác. Denis Francisco Menezes no clero; Pe. Manoel José dos Santos e Diác. Inácio Filho no histórico. Migrations conferidas no banco em 30/10
 - [x] Validação ponta a ponta com Playwright dos fluxos públicos, admin e editor (23/10)
 - [x] Migration `010`: trigger impede que não admins alterem o próprio `role`/`is_active`; remove as políticas de INSERT da `009` (23/10)
 - [x] Server Actions de editores checam admin ativo (`requireAdmin`) (23/10)

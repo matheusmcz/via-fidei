@@ -57,7 +57,7 @@ Explicação quando necessário.
 - [ ] Empty states tratados
 ```
 
-- `gh` (GitHub CLI) não está instalado na máquina local; se precisar abrir PR, avisar o usuário.
+- Abrir com `gh pr create --base develop` (GitHub CLI autenticado na conta `matheusmcz`). Mostrar título e descrição ao usuário antes de criar.
 
 ## Board
 
