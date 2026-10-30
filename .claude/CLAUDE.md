@@ -23,7 +23,7 @@ npm run seed             # popula o banco a partir de data/*.ts (service role)
 npm run bootstrap-users  # cria admin + editor de teste (service role)
 ```
 
-Não há testes automatizados nem CI. Para validar uma mudança: `npx tsc --noEmit`, `npm run lint` e, quando houver UI, rodar o app e conferir desktop, mobile e dark mode seguindo [`.claude/docs/QA.md`](docs/QA.md).
+Ainda não há testes automatizados nem CI (board VF-036). A validação é feita pelo agente `tester` no fluxo abaixo.
 
 ## Documentação
 
@@ -32,11 +32,23 @@ Não há testes automatizados nem CI. Para validar uma mudança: `npx tsc --noEm
 | [`.claude/docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Arquitetura, clientes Supabase, env, migrations, controle de acesso, regras de domínio |
 | [`.claude/docs/QA.md`](docs/QA.md) | Casos de teste e checklist de regressão |
 | [`.claude/docs/SHADCN.md`](docs/SHADCN.md) | Uso do shadcn/ui |
+| [`.claude/docs/APRENDIZADOS.md`](docs/APRENDIZADOS.md) | Retrospectivas do fluxo de revisão e ações preventivas em vigor |
 | [`.claude/docs/commit-plan.md`](docs/commit-plan.md) | Registro histórico da integração Supabase (não reaplicar) |
 | [`docs/board.md`](../docs/board.md) | **Board de demandas**: em andamento, a fazer, decisões, concluído |
 | [`data/README.md`](../data/README.md) | Tabelas, seed e arquivos legados |
 
-Regras por assunto em `.claude/rules/` (git, arquitetura, dados, Next.js, React, estilo, TypeScript).
+Regras por assunto em `.claude/rules/` (fluxo de desenvolvimento, git, arquitetura, dados, Next.js, React, estilo, TypeScript). Agentes em `.claude/agents/`: `reviewer` e `tester`.
+
+## Fluxo de desenvolvimento (obrigatório)
+
+Toda demanda de código segue [`rules/dev-workflow.md`](rules/dev-workflow.md):
+
+1. **Implementar**, com TDD sempre que possível, Clean Architecture adaptada, SOLID e Clean Code.
+2. **Revisar** com o agente `reviewer`, chamado automaticamente. Críticos e altos são corrigidos na hora; médios e baixos são corrigidos agora ou vão para o board. Novas rodadas até não restar crítico ou alto, no máximo 5.
+3. **Testar** com o agente `tester`, ao fim da revisão.
+4. **Fechar** com o relatório final (o quê, como, por quê, revisão, testes, itens enviados ao board).
+
+Rodadas com muitos achados geram retrospectiva em [`docs/APRENDIZADOS.md`](docs/APRENDIZADOS.md). Antes de implementar, ler as **ações preventivas em vigor** registradas lá.
 
 ## Como trabalhar neste projeto
 

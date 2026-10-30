@@ -2,7 +2,7 @@
 
 Controle das demandas do projeto: o que está em andamento, o que falta fazer, as decisões tomadas e o que já foi entregue.
 
-**Atualizado em:** 30/10/2026
+**Atualizado em:** 30/10/2026 (fluxo com agentes)
 
 ## Como usar
 
@@ -11,6 +11,7 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
   - `doc`: já estava listado na documentação (ARCHITECTURE, QA) até 23/10/2026.
   - `análise`: identificado na análise do código feita com o Claude em 29/10/2026.
   - `decisão`: consequência de uma decisão registrada na seção **Decisões**.
+  - `revisão`: achado médio ou baixo do agente `reviewer` adiado para depois. Leva o ID do achado e a demanda de origem, ex.: `revisão` (R2-3 em VF-021) · médio.
 - Ao concluir um item, marcar `[x]`, mover para **Concluído** com a data e citar o PR.
 - A ordem dentro de cada seção **não** é prioridade. A priorização será definida depois.
 
@@ -18,8 +19,8 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
 
 ## Em andamento
 
-- [ ] **VF-002 · Preparar o projeto para o Claude Code** — branch `chore/claude-setup`.
-  - `.claude/CLAUDE.md`, regras em `.claude/rules/`, docs movidos para `.claude/docs/` e este board.
+- [ ] **VF-004 · Fluxo implementar → revisar → testar** — branch `chore/claude-agents`.
+  - Agentes `reviewer` e `tester` em `.claude/agents/`, regra `.claude/rules/dev-workflow.md` (ciclo de até 5 rodadas, severidades, princípios, relatório final) e `.claude/docs/APRENDIZADOS.md` (retrospectivas).
 
 ---
 
@@ -63,7 +64,7 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
 - [ ] **VF-033 · Sitemap e robots** — o README promete "Sitemap automático", mas não existem `app/sitemap.ts` nem `app/robots.ts`. Origem: `análise`.
 - [ ] **VF-034 · Extrair o bloco de logo e marca** compartilhado entre `PageHeader` e `AdminHeader`. Origem: `doc`.
 - [ ] **VF-035 · Tipos gerados do banco** (`supabase gen types`) — hoje as linhas são descritas por interfaces `Db*` escritas à mão, e o mapeamento de igreja está duplicado em `getChurches` e `getChurchBySlug`. Origem: `análise` · `lib/supabase/queries/`.
-- [ ] **VF-036 · Testes automatizados e CI** — não há testes nem workflow. Sugestão inicial: testes unitários de `lib/utils` (horários, clero, contato) e um GitHub Actions com `lint` + `tsc` + `build`. Origem: `análise`.
+- [ ] **VF-036 · Testes automatizados e CI** — não há testes nem workflow. Sugestão inicial: testes unitários de `lib/utils` (horários, clero, contato) e um GitHub Actions com `lint` + `tsc` + `build`. **Habilita o TDD e as camadas de unitários, integração e e2e do agente `tester`** (hoje ele só roda tipos, lint e build). Stack definida na D9: Vitest + Testing Library e Playwright, com scripts `test:unit`, `test:integration` e `test:e2e`. Banco definido na D10: Supabase local via Docker para testes que gravam dados. Será a próxima demanda, já no ciclo novo. Origem: `análise` + `decisão`.
 - [ ] **VF-037 · Seed idempotente** — `npm run seed` usa `insert`; rodar duas vezes gera erros de slug duplicado e dados parciais. Origem: `análise` · `scripts/seed.ts`.
 - [ ] **VF-038 · Avaliar tipos de coluna para datas e horários** — `time`, `end_time` e as datas do clero são `text`. Hoje é intencional para aceitar só o ano. Reavaliar se surgir necessidade de ordenar ou filtrar por data. Origem: `análise`.
 - [ ] **VF-039 · Migrar `next lint` para o ESLint CLI** — `next lint` está obsoleto e foi removido no Next 16. Origem: `análise`.
@@ -80,7 +81,7 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
 - [ ] **VF-060 · Node local na versão 24** — a máquina local roda Node 22; `engines` e `.nvmrc` pedem 24.x. Origem: `análise`.
 - [ ] **VF-061 · `package-lock.json` solto na pasta home** (`~/package-lock.json`) — faz o Next inferir a raiz errada do workspace (aviso no lint e no build). Origem: `análise`.
 - [ ] **VF-062 · Destino do `.github/copilot-instructions.md`** — desatualizado (ainda fala em dados estáticos e escopo só de MVP) e fora do Git, porque `.github` está no `.gitignore`. Decidir: remover, atualizar ou deixar. Atenção: esse `.gitignore` também bloqueia futuros workflows de CI (VF-036). Origem: `análise`.
-- [ ] **VF-064 · Portar comandos e agentes do Cursor para o Claude Code** — `.cursor/commands` (commit, create-pr, qa, add-church, build-check…), `.cursor/agents` (data-auditor, qa-tester, reviewer, verifier) e `.cursor/skills` como skills e agents em `.claude/`. Origem: `análise`.
+- [ ] **VF-064 · Portar comandos e agentes do Cursor para o Claude Code** — `reviewer`, `qa-tester` e `verifier` já viraram os agentes `reviewer` e `tester` (VF-004). Faltam `.cursor/commands` (commit, create-pr, qa, add-church, build-check…), o agente `data-auditor` e as `.cursor/skills`. Origem: `análise`.
 
 ---
 
@@ -105,6 +106,9 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
 | D5 | 29/10/2026 | Abrangência: por ora só Maceió; o objetivo é toda a Arquidiocese de Maceió. |
 | D6 | 29/10/2026 | Fluxo de trabalho mantido: Conventional Commits em português, branch por entrega, PR para `develop` e de `develop` para `main`. |
 | D7 | 23/10/2026 | A `bio` do clérigo descreve a pessoa; vínculos com igrejas ficam em `church_clergy`, não na bio. |
+| D8 | 30/10/2026 | Toda demanda de código segue o ciclo implementar → revisar (agente `reviewer`) → testar (agente `tester`): severidades crítico, alto, médio e baixo; crítico e alto corrigidos na hora; até 5 rodadas; retrospectiva com 8 ou mais achados, 3 ou mais críticos/altos ou rodada 4. Ver `.claude/rules/dev-workflow.md`. |
+| D9 | 30/10/2026 | Testes: Vitest + Testing Library (unitários e integração) e Playwright (e2e). |
+| D10 | 30/10/2026 | Testes que gravam dados rodam no Supabase local (Docker + CLI do Supabase), nunca no projeto de produção. |
 
 ---
 
@@ -112,6 +116,7 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
 
 ### Outubro/2026
 
+- [x] **VF-002** · Projeto preparado para o Claude Code: `.claude/CLAUDE.md`, regras, docs em `.claude/docs/` e este board — PR #19 (30/10)
 - [x] **VF-063** · GitHub CLI (`gh`) instalado e autenticado na conta `matheusmcz` (30/10)
 - [x] **VF-001** · Clero da Paróquia São Paulo Apóstolo — PR #18 (24/10): migrations `011` (nascimento/falecimento), `012` (títulos: Cônego, Vigário Geral, Prefeito de Estudos) e `013` (bios sem paróquias); componentes `ClergyVitalInfo` e `ClergyHonorFlags`; Pe. José Elielton da Silva e Diác. Denis Francisco Menezes no clero; Pe. Manoel José dos Santos e Diác. Inácio Filho no histórico. Migrations conferidas no banco em 30/10
 - [x] Validação ponta a ponta com Playwright dos fluxos públicos, admin e editor (23/10)
