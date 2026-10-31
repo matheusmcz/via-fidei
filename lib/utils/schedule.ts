@@ -54,13 +54,21 @@ export function getDayNameShort(day: DayOfWeek): string {
 }
 
 /**
- * Validate time string format (HH:MM)
+ * HH:MM com dois dígitos, de 00:00 a 23:59. Só dígitos ASCII, sem espaços.
+ * Os dois dígitos na hora mantêm a ordenação por texto correta ("07:30" < "18:00"),
+ * que `groupByDay()` e o banco usam.
+ */
+const TIME_HH_MM = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+
+/**
+ * Validate time string format (HH:MM, 00:00–23:59, two-digit hour).
+ * Mesma regra do CHECK `is_valid_schedule_time()` (migration 016) em
+ * `schedule_events` e `activity_schedules` (`time` e `end_time`).
  * @returns true if valid, false otherwise
  */
 export function isValidTime(time: string): boolean {
-  if (!time || typeof time !== "string") return false;
-  const match = time.match(/^([0-1]?\d|2[0-3]):([0-5]\d)$/);
-  return match !== null;
+  if (typeof time !== "string") return false;
+  return TIME_HH_MM.test(time);
 }
 
 /**
