@@ -8,6 +8,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  canEditChurch as canProfileEditChurch,
+  isActiveAdmin,
+  isActiveEditor,
+  isDeactivated,
+} from "./access";
 import type { AuthContextValue, UserProfile } from "./types";
 
 export const AuthContext = createContext<AuthContextValue>({
@@ -46,6 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq("id", authUser.id)
         .single();
 
+      if (isDeactivated(profile)) {
+        // Perfil desativado não fica logado (VF-013): encerra a sessão aberta
+        // antes da desativação. Uma falha do signOut é ignorada de propósito:
+        // o estado abaixo já tira toda permissão da UI, o RLS barra a escrita
+        // e o próximo carregamento tenta encerrar a sessão de novo.
+        await supabase.auth.signOut();
+        setUser(null);
+        setLinkedChurchIds([]);
+        setIsLoading(false);
+        return;
+      }
+
       if (profile) {
         setUser(profile as UserProfile);
 
@@ -81,16 +99,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const isAdmin = user?.role === "admin";
-  const isEditor = user?.role === "editor";
+  const isAdmin = isActiveAdmin(user);
+  const isEditor = isActiveEditor(user);
 
   const canEditChurch = useCallback(
-    (churchId: string) => {
-      if (isAdmin) return true;
-      if (isEditor) return linkedChurchIds.includes(churchId);
-      return false;
-    },
-    [isAdmin, isEditor, linkedChurchIds]
+    (churchId: string) => canProfileEditChurch(user, linkedChurchIds, churchId),
+    [user, linkedChurchIds]
   );
 
   return (
