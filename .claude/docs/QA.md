@@ -50,7 +50,7 @@ npm run test:e2e          # smoke das páginas públicas (Playwright, Chromium, 
 | Caso | Teste | O que cobre |
 |------|-------|-------------|
 | CT-001 | `features/churches/church-list.integration.test.tsx`, `tests/e2e/public-pages.spec.ts` | Ordem alfabética, link do card, filtro por bairro, paginação de 20, busca na home real |
-| CT-002 | `tests/e2e/public-pages.spec.ts` | Página da igreja responde 200 com nome e seção "Clero" |
+| CT-002 | `tests/e2e/public-pages.spec.ts`, `lib/supabase/queries/churches.integration.test.ts` | Página da igreja responde 200 com nome e seção "Clero"; na query, contato, horários por categoria, atividades, clero (com `endDate`) e ministérios por categoria, seções vazias omitidas e erro do Supabase lançado (não vira 404) |
 | CT-003 | `lib/utils/contact.test.ts`, `features/churches/contact/church-contact-section.integration.test.tsx` | Formatação e links de telefone, WhatsApp, e-mail, Instagram, Facebook e site |
 | CT-004 | `lib/utils/clergy.test.ts`, `features/churches/clergy/clergy-list.integration.test.tsx`, e2e | Só ativos, ordem por cargo, "Pe."/"Mons."/sufixo, período "Atual", histórico |
 | CT-005 | `lib/utils/schedule.test.ts` | Formato de hora, intervalo, recorrência, agrupamento e ordem dos dias (a UI das abas segue manual) |
@@ -60,7 +60,7 @@ npm run test:e2e          # smoke das páginas públicas (Playwright, Chromium, 
 | CT-011 | `tests/e2e/public-pages.spec.ts` | `/login` renderiza com `noindex`; `/admin` sem sessão vai para `/login` |
 | 404 | `tests/e2e/public-pages.spec.ts` | `/igreja/nao-existe` responde 404 com "Igreja não encontrada" |
 
-Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getAllClergyWithChurch`) têm testes em `lib/supabase/queries/*.integration.test.ts`. Seguem manuais: responsividade (CT-008, CT-014), dark mode, SEO completo (CT-009), links externos reais e os fluxos logados.
+Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getChurchBySlug`, `getAllClergyWithChurch`) têm testes em `lib/supabase/queries/*.integration.test.ts`, e `findQueryError` em `lib/supabase/queries/query-error.test.ts`. Seguem manuais: responsividade (CT-008, CT-014), dark mode, SEO completo (CT-009), links externos reais e os fluxos logados.
 
 ---
 
