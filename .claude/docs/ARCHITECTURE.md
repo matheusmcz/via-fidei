@@ -330,6 +330,7 @@ Stack definida na D9. Nenhum teste grava no Supabase; os que precisarem gravar d
 3. **Leituras públicas** (home, detalhe da igreja, clero): `lib/supabase/public.ts` + `queries/*` — sem `cookies()`, role `anon` nas políticas. `generateStaticParams` em `/igreja/[slug]` usa o mesmo cliente público.
 4. **Sessão autenticada**: `lib/supabase/server.ts` (cookies) — login, `/admin`, Server Actions; **`middleware.ts`** na raiz renova tokens antes das rotas.
 5. **ISR** com `revalidate = 60` nas páginas que consomem Supabase.
+   - **Erro do Supabase lança; "não encontrado" é `null`.** As queries de `lib/supabase/queries/` nunca transformam erro (projeto pausado, rede, falta de permissão/GRANT) em lista vazia ou `null`: lançam o erro, e com ISR o Next mantém a última versão boa em cache. Linhas filtradas pelo RLS não geram erro: chegam como `null` ou lista vazia. Só a ausência de linha vira `null` (ex.: `getChurchBySlug` usa `.maybeSingle()`), e só esse caso leva ao `notFound()`. Consultas paralelas passam por `findQueryError()` (`queries/query-error.ts`).
 6. **UI com estado local**: `features/churches` com busca/filtro/paginação em `useState` após hidratação (dados já vindos do servidor).
 
 ## Convenções de código
