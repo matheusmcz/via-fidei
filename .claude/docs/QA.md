@@ -17,7 +17,7 @@ Este documento define os casos de teste, comportamentos esperados e fluxos de va
 
 - Node.js 24.x (ver `package.json` → `engines` e `.nvmrc`)
 - npm ou pnpm instalado
-- Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→013) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../../.env.example))
+- Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→014) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../../.env.example))
 - Para os fluxos logados (CT-011 a CT-014): `npm run bootstrap-users` com `ADMIN_*` e `EDITOR_*` no `.env.local`. `EDITOR_CHURCH_ID` precisa ser o `id` atual de uma igreja no banco (os IDs mudam se o seed for refeito); sem ele, o script usa a primeira igreja.
 - Projeto Supabase **ativo**: no plano gratuito ele é pausado após inatividade e o endereço deixa de resolver (`ENOTFOUND` no log, erro 500 na home). Restaurar no Dashboard antes de testar.
 - **Build / Vercel:** URL e chave pública do Supabase disponíveis no ambiente do deploy (Production **e** Preview se houver PRs). Ver [ARCHITECTURE.md](ARCHITECTURE.md) (seção Supabase + Vercel) e [README](../../README.md) (instalação)
@@ -320,6 +320,8 @@ Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getAllClergyWithCh
 - [ ] Em igreja não vinculada: nenhum controle de edição (igual ao visitante)
 - [ ] `/admin` redireciona para `/`
 - [ ] Pela API (sessão do editor), `update profiles set role = 'admin'` ou `is_active` na própria linha falha com `42501`; alterar o próprio `name` funciona
+- [ ] Permissões da D3 no banco (migration `014`): rodar `supabase/tests/014_rls_permissoes_editor_verificacao.sql` no SQL Editor; deve terminar sem erro (OK 1 a OK 7, com o 4b) e não grava nada. Cobre: editor altera contato, foto e link do Maps da igreja vinculada; não altera nome, slug, endereço, bairro nem tipo (`42501`); não mexe em `church_clergy`, `clergy` nem no catálogo `ministries`; não cria nem apaga igreja; não altera igreja não vinculada; continua gerenciando horários, atividades e grupos/movimentos/pastorais; admin altera tudo
+- [ ] Divergência conhecida da UI: o editor ainda vê o lápis no nome da igreja e na seção Clero (`canEditChurch` vale para a igreja inteira); a gravação é recusada pelo banco
 
 ---
 

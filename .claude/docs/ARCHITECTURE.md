@@ -45,7 +45,7 @@ Resumo do que está em produção hoje:
 
 | Camada | Descrição |
 |--------|-----------|
-| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`013`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026 — conferir o estado pelo schema, não por `supabase migration list`. |
+| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`014`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026; a `014` precisa ser aplicada pelo SQL Editor depois do merge e conferida com o roteiro `supabase/tests/014_rls_permissoes_editor_verificacao.sql` — conferir o estado pelo schema, não por `supabase migration list`. |
 | **Chaves públicas** | URL + chave **publishable** ou **anon** (JWT) para o cliente. Resolução central em [`lib/supabase/env.ts`](../../lib/supabase/env.ts) — ver subseção **Variáveis de ambiente (Supabase + Vercel)** abaixo. `SUPABASE_SERVICE_ROLE_KEY` **apenas** servidor / `npm run seed` ([API keys](https://supabase.com/docs/guides/api/api-keys)). |
 | **Auth** | Supabase Auth + cookies (`@supabase/ssr`); [`middleware.ts`](../../middleware.ts) na raiz renova a sessão; [`features/auth/`](../../features/auth/) expõe `AuthProvider` e `useAuth`. |
 | **Leitura pública** | [`lib/supabase/public.ts`](../../lib/supabase/public.ts) — `createClient` do `@supabase/supabase-js` só com chave pública, **sem** `cookies()`. Usado em [`lib/supabase/queries/`](../../lib/supabase/queries/) (listagens, detalhes, `generateStaticParams`). |
@@ -291,12 +291,15 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `005_clergy.sql` - Clérigos + vínculo clérigo-igreja
 - `006_ministries.sql` - Ministérios + vínculo ministério-igreja
 - `007_editor_churches.sql` - Vínculo editor-igreja
-- `008_rls_policies.sql` - Todas as políticas de Row Level Security
+- `008_rls_policies.sql` - Políticas de Row Level Security (ajustadas pela `010` e pela `014`)
 - `009_profiles_auth_insert_policies.sql` - Reescreve `handle_new_user()` com `search_path` explícito (corrige "Database error creating new user"); as políticas de INSERT que ela cria foram removidas na `010`
 - `010_profiles_privilege_escalation.sql` - Trigger `BEFORE UPDATE` em `profiles` que só deixa admin alterar `role`/`is_active` (exceto chamadas com service role ou SQL Editor); remove as políticas de INSERT da `009`
 - `011_clergy_vital_dates.sql` - Colunas `birth_date`/`death_date` em `clergy` (texto: `YYYY` ou `YYYY-MM-DD`) e atualização do clero da Paróquia São Paulo Apóstolo (idempotente)
 - `012_clergy_honors.sql` - Coluna `honors text[]` em `clergy` com check dos valores permitidos (`canon`, `vicar-general`, `prefect-of-studies`)
 - `013_clergy_bios_without_parishes.sql` - Reescreve as bios sem citar paróquias (vínculos ficam em `church_clergy`)
+- `014_rls_permissoes_editor.sql` - Alinha o RLS à D3: trigger `BEFORE UPDATE` em `churches` que só deixa o editor alterar contato, foto e link do Maps; remove as políticas de escrita do editor em `church_clergy`
+
+Roteiros de verificação manual ficam em `supabase/tests/` (ex.: `014_rls_permissoes_editor_verificacao.sql`), para rodar no SQL Editor dentro de `begin … rollback`.
 
 ### `/scripts`
 
@@ -325,7 +328,7 @@ Stack definida na D9. Nenhum teste grava no Supabase; os que precisarem gravar d
 
 ## Fluxo de dados
 
-1. Dados no **Supabase** (PostgreSQL); acesso controlado por **RLS** (políticas em `008_rls_policies.sql`).
+1. Dados no **Supabase** (PostgreSQL); acesso controlado por **RLS** (políticas em `008_rls_policies.sql`, com os ajustes da `010` e da `014`).
 2. **Variáveis** carregadas em build/runtime conforme [`lib/supabase/env.ts`](../../lib/supabase/env.ts); [`next.config.ts`](../../next.config.ts) replica `SUPABASE_*` → `NEXT_PUBLIC_*` para o bundle do browser quando necessário.
 3. **Leituras públicas** (home, detalhe da igreja, clero): `lib/supabase/public.ts` + `queries/*` — sem `cookies()`, role `anon` nas políticas. `generateStaticParams` em `/igreja/[slug]` usa o mesmo cliente público.
 4. **Sessão autenticada**: `lib/supabase/server.ts` (cookies) — login, `/admin`, Server Actions; **`middleware.ts`** na raiz renova tokens antes das rotas.
@@ -365,15 +368,30 @@ Três papéis no sistema:
 
 Um editor pode ser vinculado a **múltiplas igrejas**. Admin tem acesso de edição em todas.
 
-### Permissões de edição por tipo de dado (decidido em 29/10/2026)
+### Permissões de edição por tipo de dado (D3: decidido em 29/10/2026; foto e Maps em 30/10/2026)
 
 | Dado | Quem edita | Motivo |
 |------|-----------|--------|
 | Identidade da igreja: nome, slug, endereço, bairro, tipo | Só admin | Slug faz parte da URL (links compartilhados, SEO); nome e endereço errados confundem quem procura a igreja. No futuro, editor poderá *sugerir* a alteração para aprovação do admin. |
-| Contato, horários, atividades, grupos/movimentos/pastorais | Editor vinculado e admin | Dado operacional que a paróquia conhece melhor e que muda com frequência |
+| Contato (telefone, WhatsApp, e-mail, Instagram, Facebook, site), foto da igreja e link do Google Maps | Editor vinculado e admin | Dado operacional que a paróquia conhece melhor e que muda com frequência |
+| Horários, atividades e grupos/movimentos/pastorais da igreja | Editor vinculado e admin | Idem |
+| Catálogo de grupos/movimentos/pastorais (`ministries`) | Só admin (o editor vincula e desvincula itens existentes) | Estado atual; se o editor pode criar item novo no catálogo ainda é pergunta em aberto |
 | Clero: cadastro de clérigos e vínculos com igrejas | Só admin | Um clérigo está em uma igreja por vez; vincular a uma paróquia implica desvincular de outra, que pode não ser do mesmo editor |
+| Criar e apagar igrejas | Só admin | — |
 
-**Estado atual (diverge da decisão):** o RLS (`008_rls_policies.sql`) deixa o editor alterar qualquer coluna de `churches` e inserir/alterar/remover vínculos em `church_clergy`. Ajuste registrado no [board](../../docs/board.md).
+**Como o banco aplica a D3** (`008_rls_policies.sql` + `014_rls_permissoes_editor.sql`):
+
+| Tabela | Editor da igreja vinculada (`is_editor_of`) | Admin (`is_admin`) |
+|--------|---------------------------------------------|--------------------|
+| `churches` | `UPDATE` só nas colunas `phone`, `whatsapp`, `email`, `instagram`, `facebook`, `website`, `image_url`, `google_maps_url` | Tudo |
+| `schedule_events`, `activities`, `activity_schedules`, `church_ministries` | `INSERT`, `UPDATE`, `DELETE` | Tudo |
+| `clergy`, `church_clergy`, `ministries` | Só leitura | Tudo |
+| `editor_churches`, `profiles` | Lê os próprios vínculos e o próprio perfil; não altera papel nem status (`010`) | Tudo |
+
+- A política `churches_update_editor` libera a linha; a restrição de coluna fica no trigger `churches_restrict_editor_columns` (função `restrict_church_update_to_editor_columns()`), porque o admin também usa a role `authenticated` e um `GRANT` por coluna o bloquearia. O trigger usa **lista de permissão**: qualquer coluna fora da lista (inclusive `id`, `created_at` e colunas novas) só muda pelo admin. Ao criar uma coluna em `churches` que o editor deva alterar, incluí-la na lista.
+- O trigger só age nas roles da API (`authenticated`, `anon`). Service role (seed) e SQL Editor continuam alterando tudo.
+- Erro devolvido ao editor: código `42501`, mensagem "O editor só altera contato, foto e link do Maps da igreja; nome, slug, endereço, bairro e tipo são do admin".
+- Roteiro de verificação: `supabase/tests/014_rls_permissoes_editor_verificacao.sql` (roda no SQL Editor dentro de `begin … rollback`, não grava nada).
 
 ### Autenticação
 
@@ -396,6 +414,7 @@ Um editor pode ser vinculado a **múltiplas igrejas**. Admin tem acesso de ediç
 
 - Componentes `EditableSection`, `EditIndicator`, `admin-church-link` condicionam empty state + lápis ao papel e vínculos.
 - Os botões de adicionar/editar ainda não têm formulário nem Server Action (ver board).
+- **Diverge da D3:** `canEditChurch` (`AuthProvider`) é um só para a igreja inteira, então o editor vinculado vê o lápis no nome da igreja e o lápis/"Adicionar clérigo" na seção Clero, que são só do admin. O banco já barra a gravação (`014`); a UI precisa de permissão por tipo de dado.
 
 ### Comportamento por papel na página de detalhes (alvo de UX, decidido em 29/10/2026)
 
@@ -407,6 +426,8 @@ Um editor pode ser vinculado a **múltiplas igrejas**. Admin tem acesso de ediç
 | Igreja não vinculada | — | Visualiza (somente leitura, igual ao visitante) | — |
 
 Horários é a informação principal da página: a ausência também informa o fiel, e é o lugar natural para o futuro "sugerir correção". Nas demais seções, um card vazio parece erro e a mensagem é ruído.
+
+**Atenção (D3):** no Clero, o lápis e o "Adicionar" são só do admin; o banco recusa a gravação do editor (`014`). O que o editor vinculado vê no Clero preenchido ou vazio ainda precisa ser definido com o usuário antes do VF-021.
 
 **Estado atual:** para visitante, todas as seções vazias mostram o card e o título sem conteúdo (`EditableSection` retorna `null` só para o corpo).
 
