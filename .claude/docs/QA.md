@@ -57,7 +57,9 @@ npm run test:e2e          # smoke das páginas públicas (Playwright, Chromium, 
 | CT-006 | `lib/utils/slugify.test.ts`, `church-list.integration.test.tsx`, e2e | Busca ignorando acento e caixa |
 | CT-007 | `church-list.integration.test.tsx`, `church-contact-section.integration.test.tsx`, `clergy-list.integration.test.tsx`, e2e | Estados vazios da busca, do contato e do clero |
 | CT-010 | `church-contact-section.integration.test.tsx` | `target="_blank"` e `rel="noopener noreferrer"` nos contatos |
-| CT-011 | `tests/e2e/public-pages.spec.ts` | `/login` renderiza com `noindex`; `/admin` sem sessão vai para `/login` |
+| CT-011 | `tests/e2e/public-pages.spec.ts`, `features/auth/actions.integration.test.ts`, `features/auth/access.test.ts` | `/login` renderiza com `noindex`; `/admin` sem sessão vai para `/login`; login recusa perfil desativado (ou sem perfil) e encerra a sessão; destino por papel |
+| CT-012 | `features/auth/admin-actions.integration.test.ts`, `features/auth/admin-validation.test.ts` | Validação da entrada das actions de admin (email, nome, senha, UUIDs); alvo só `role = 'editor'`; `createEditor` ativa o perfil explicitamente |
+| CT-013 | `features/auth/auth-provider.integration.test.tsx`, `features/auth/access.test.ts` | `canEditChurch` só para perfil ativo; perfil desativado tem a sessão encerrada no `AuthProvider` |
 | 404 | `tests/e2e/public-pages.spec.ts` | `/igreja/nao-existe` responde 404 com "Igreja não encontrada" |
 
 Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getAllClergyWithChurch`) têm testes em `lib/supabase/queries/*.integration.test.ts`. Seguem manuais: responsividade (CT-008, CT-014), dark mode, SEO completo (CT-009), links externos reais e os fluxos logados.
@@ -287,6 +289,8 @@ Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getAllClergyWithCh
 - [ ] Login de admin → redireciona para `/admin`
 - [ ] Login de editor → redireciona para `/`
 - [ ] Editor acessando `/admin` → redireciona para `/`
+- [ ] Login de editor ou admin **desativado** → fica em `/login` com "Esta conta está desativada. Fale com o administrador do Via Fidei para reativá-la." e sem sessão (recarregar a página não mostra lápis nem dá acesso ao `/admin`)
+- [ ] Editor logado que é desativado pelo admin: ao recarregar qualquer página, a sessão é encerrada e o lápis some
 
 ---
 
@@ -302,7 +306,11 @@ Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getAllClergyWithCh
 - [ ] Clicar em um editor abre `/admin/usuarios/[id]` com status, data de criação e lista de igrejas (vinculadas marcadas)
 - [ ] Marcar/desmarcar igrejas mostra "Salvar vínculos"; salvar atualiza a lista
 - [ ] "Desativar"/"Ativar" alterna o status (badge "Inativo" na lista)
-- [ ] `/admin/usuarios/novo`: criar editor com nome, email, senha (mín. 6) e igrejas → volta para a lista com o editor novo
+- [ ] Erro ao alternar status ou salvar vínculos aparece em vermelho abaixo do botão (sem `alert()`)
+- [ ] `/admin/usuarios/[id]` com o id de um admin (inclusive o próprio) → 404; chamando a action direto com esse id → "Editor não encontrado", sem alterar nada
+- [ ] `/admin/usuarios/novo`: criar editor com nome, email, senha (mín. 6) e igrejas → volta para a lista com o editor novo, já **ativo**
+- [ ] `/admin/usuarios/novo`: email inválido, nome só com espaços, senha com menos de 6 ou mais de 72 caracteres → mensagem de erro no formulário, nenhum usuário criado
+- [ ] Usuário criado fora do painel (Dashboard do Supabase, cadastro público) nasce **inativo** (migration `015`): não edita nada até o admin ativá-lo. Roteiro: `supabase/tests/015_perfil_inicial_sem_permissao_verificacao.sql` (OK 1 a OK 7, não grava nada)
 - [ ] Página de admin e de login: título "Admin | Via Fidei" / "Login | Via Fidei" e `<meta name="robots" content="noindex, nofollow">`
 - [ ] Na página de uma igreja: "Gerenciar editores", lápis nas seções e, em seções vazias, mensagem + botão "Adicionar"
 
