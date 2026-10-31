@@ -25,9 +25,10 @@ Fica fora do ciclo: mudança só de documentação, board ou regras, a menos que
 ## 2. Implementar
 
 - **TDD sempre que possível:** escrever o teste que falha, implementar o mínimo para passar e depois refatorar. Prioridade de cobertura: regras de domínio (`lib/utils`), mapeamentos das queries, Server Actions e fluxos críticos (permissões).
-  - Enquanto a infraestrutura de testes não existir (board VF-036), registrar no relatório quais testes teriam sido escritos.
+  - Onde ficam: unitário de regra pura em `<arquivo>.test.ts` ao lado do código (`npm run test:unit`); componente ou query com dependências simuladas em `<arquivo>.integration.test.ts(x)` (`npm run test:integration`); fluxo de página em `tests/e2e/*.spec.ts` (`npm run test:e2e`). Fixtures compartilhadas em `tests/fixtures/`.
+  - Nenhum teste grava no Supabase de produção. Teste que precise gravar dados espera o Supabase local (D10); até lá, registrar no relatório o teste que faltou.
 - Seguir os **princípios** abaixo e as demais regras de `.claude/rules/`.
-- Antes de chamar o revisor: `npx tsc --noEmit` e `npm run lint` precisam passar, para não gastar rodada com erro mecânico.
+- Antes de chamar o revisor: `npx tsc --noEmit`, `npm run lint`, `npm run test:unit` e `npm run test:integration` precisam passar, para não gastar rodada com erro mecânico. Mudança em página ou rota: rodar também `npm run test:e2e`.
 
 ## 3. Revisar
 

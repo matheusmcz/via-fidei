@@ -304,6 +304,25 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `bootstrap-users.ts` - Cria/reaproveita admin + editor de teste e vincula o editor a uma igreja (`npm run bootstrap-users`)
 - `load-env.ts` - Carrega `.env.local` antes dos scripts (via `dotenv`)
 
+### Testes e CI
+
+Stack definida na D9. Nenhum teste grava no Supabase; os que precisarem gravar dados vão rodar no Supabase local (D10, ainda não configurado).
+
+| Camada | Onde | Comando | Ambiente |
+|--------|------|---------|----------|
+| Unitário | `<arquivo>.test.ts` ao lado do código (hoje `lib/utils/`) | `npm run test:unit` | Vitest, node |
+| Integração | `<arquivo>.integration.test.ts(x)` ao lado do código (`features/`, `lib/supabase/queries/`) | `npm run test:integration` | Vitest + Testing Library, jsdom; queries com `// @vitest-environment node` |
+| E2E | `tests/e2e/*.spec.ts` | `npm run test:e2e` | Playwright, Chromium, `next start` na porta 3203 |
+
+- [`vitest.config.mts`](../../vitest.config.mts): dois projetos (`unit` e `integration`) e o alias `@/` igual ao do `tsconfig`. Unitário é sempre `.ts`; teste que renderiza componente é integração.
+- [`playwright.config.ts`](../../playwright.config.ts): sobe `npm run build && npm run start -- -p 3203`; `E2E_SKIP_BUILD=1` reaproveita o `.next`, `E2E_PORT` troca a porta e `E2E_REUSE_SERVER=1` usa um servidor já aberto (desligado por padrão, porque outra worktree pode estar na porta).
+- `tests/setup/env.ts`: apaga as variáveis do Supabase antes dos testes do Vitest, para que nenhum teste alcance o banco real (local e CI se comportam igual).
+- `tests/setup/dom.ts`: matchers do jest-dom, `cleanup` entre testes e stubs de APIs que o jsdom não tem (usadas pelo Radix).
+- `tests/fixtures/domain.ts`: `makeChurch`, `makeClergy`, `makeClergyWithChurch`.
+- `tests/fixtures/supabase.ts`: cliente Supabase simulado; qualquer cadeia de filtros resolve com o resultado configurado por tabela. Usado com `vi.mock("@/lib/supabase/public")` e `mockPublicClient(resultadosPorTabela)`. Não registra os filtros (`eq`, `order`…).
+- [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml): em PR e push para `develop` e `main`. Jobs: `quality` (lint, tipos, unitários, integração; sem secrets), `supabase-env` (falha com mensagem clara se faltarem os secrets), `build` (envia o `.next` como artefato) e `e2e` (reaproveita o build; cache dos browsers do Playwright). Secrets do repositório: `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (chave pública, nunca a `service_role`).
+- `.gitignore` ignora só `.github/copilot-instructions.md` (VF-062); o restante de `.github/` é versionado.
+
 ## Fluxo de dados
 
 1. Dados no **Supabase** (PostgreSQL); acesso controlado por **RLS** (políticas em `008_rls_policies.sql`).

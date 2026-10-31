@@ -19,11 +19,17 @@ npm run dev              # dev server com Turbopack
 npm run build            # build de produção (precisa das variáveis do Supabase)
 npm run lint             # ESLint (next lint)
 npx tsc --noEmit         # checagem de tipos
+npm run test:unit        # Vitest: regras puras (*.test.ts), ambiente node
+npm run test:integration # Vitest: componentes e queries com Supabase simulado (*.integration.test.ts[x]), jsdom
+npm run test:e2e         # Playwright (Chromium): build + next start na porta 3203, smoke só de leitura
+npm test                 # unit + integration
 npm run seed             # popula o banco a partir de data/*.ts (service role)
 npm run bootstrap-users  # cria admin + editor de teste (service role)
 ```
 
-Ainda não há testes automatizados nem CI (board VF-036). A validação é feita pelo agente `tester` no fluxo abaixo.
+Testes: Vitest + Testing Library e Playwright (D9). Unitários e de integração ficam ao lado do código; infraestrutura (setup, fixtures, specs e2e) em `tests/`. Nenhum teste grava no Supabase: o e2e só lê o banco configurado no ambiente, e testes que gravam dados exigem o Supabase local (D10, ainda não configurado). Primeira vez com e2e: `npx playwright install chromium`; `E2E_SKIP_BUILD=1` reaproveita um build existente.
+
+CI no GitHub Actions (`.github/workflows/ci.yml`) em PR e push para `develop` e `main`: lint, tipos, unitários, integração, build e e2e. Build e e2e precisam dos secrets `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no repositório. O agente `tester` roda as mesmas camadas no fluxo abaixo.
 
 ## Documentação
 
@@ -65,4 +71,4 @@ Rodadas com muitos achados geram retrospectiva em [`docs/APRENDIZADOS.md`](docs/
 - **Variáveis na Vercel** precisam estar em Production **e** Preview, senão o build de PR falha.
 - `data/*.ts` **não** é usado em runtime; mudar só o TS não muda o site.
 - A UI de edição (lápis, "Adicionar") existe, mas ainda não tem formulários nem Server Actions.
-- O Cursor (`.cursor/`) continua configurado em paralelo; `.github/copilot-instructions.md` está desatualizado e fora do Git (`.github` está no `.gitignore`).
+- O Cursor (`.cursor/`) continua configurado em paralelo; `.github/copilot-instructions.md` está desatualizado e fica fora do Git (só esse arquivo está no `.gitignore`; o resto de `.github/` é versionado).

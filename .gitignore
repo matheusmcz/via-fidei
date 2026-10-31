@@ -8,6 +8,10 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 
 # next.js
 /.next/
@@ -35,6 +39,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.github
+# copilot (desatualizado, fora do Git; VF-062)
+.github/copilot-instructions.md
+
 # claude code (configurações pessoais)
 .claude/settings.local.json

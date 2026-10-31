@@ -144,6 +144,13 @@ npm run start
 # Linting
 npm run lint
 
+# Testes unitários e de integração (Vitest + Testing Library)
+npm run test:unit
+npm run test:integration
+
+# Smoke e2e das páginas públicas (Playwright; antes, uma vez: npx playwright install chromium)
+npm run test:e2e
+
 # Popular o banco a partir dos dados legados em data/ (requer SUPABASE_SERVICE_ROLE_KEY)
 npm run seed
 
