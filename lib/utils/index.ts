@@ -8,6 +8,7 @@ export {
   getClergyHonorLabel,
   getClergyHonors,
   isFullClergyDate,
+  isValidClergyDate,
   getAllClergyWithChurch,
   getClergyForChurch,
   getClergyInitials,

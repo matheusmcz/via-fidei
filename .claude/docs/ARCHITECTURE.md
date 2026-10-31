@@ -45,7 +45,7 @@ Resumo do que está em produção hoje:
 
 | Camada | Descrição |
 |--------|-----------|
-| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`014`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026; a `014` precisa ser aplicada pelo SQL Editor depois do merge e conferida com o roteiro `supabase/tests/014_rls_permissoes_editor_verificacao.sql` — conferir o estado pelo schema, não por `supabase migration list`. |
+| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`014` e `016`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026; a `014` precisa ser aplicada pelo SQL Editor depois do merge e conferida com o roteiro `supabase/tests/014_rls_permissoes_editor_verificacao.sql`; a `016` tem pré-verificação (antes) e verificação (depois) em `supabase/tests/` — conferir o estado pelo schema, não por `supabase migration list`. |
 | **Chaves públicas** | URL + chave **publishable** ou **anon** (JWT) para o cliente. Resolução central em [`lib/supabase/env.ts`](../../lib/supabase/env.ts) — ver subseção **Variáveis de ambiente (Supabase + Vercel)** abaixo. `SUPABASE_SERVICE_ROLE_KEY` **apenas** servidor / `npm run seed` ([API keys](https://supabase.com/docs/guides/api/api-keys)). |
 | **Auth** | Supabase Auth + cookies (`@supabase/ssr`); [`middleware.ts`](../../middleware.ts) na raiz renova a sessão; [`features/auth/`](../../features/auth/) expõe `AuthProvider` e `useAuth`. |
 | **Leitura pública** | [`lib/supabase/public.ts`](../../lib/supabase/public.ts) — `createClient` do `@supabase/supabase-js` só com chave pública, **sem** `cookies()`. Usado em [`lib/supabase/queries/`](../../lib/supabase/queries/) (listagens, detalhes, `generateStaticParams`). |
@@ -209,7 +209,7 @@ Código auxiliar reutilizável.
   - `getOrderedDays()` - Dias ordenados (domingo primeiro)
   - `canGroupWeekdays()` - Verifica se pode agrupar dias úteis
   - `formatRecurrence()` - Label de recorrência ("1ª Sexta-feira do mês")
-  - `isValidTime()` - Valida formato HH:MM
+  - `isValidTime()` - Valida `HH:MM` com dois dígitos (00:00–23:59); mesma regra do CHECK `is_valid_schedule_time()` da `016`
   - `getEventKey()` - Gera chave única para React
 - `clergy.ts` - Utilitários de clero:
   - `getRoleLabel()` - Traduz role para português ("Pároco", "Vigário")
@@ -220,7 +220,8 @@ Código auxiliar reutilizável.
   - `getPastClergyMembers()` - Filtra clérigos anteriores
   - `formatClergyTenure()` - Período de atuação ("2021 - Atual")
   - `getClergyHonors()` / `getClergyHonorLabel()` - Filtra títulos conhecidos na ordem de exibição e traduz ("Cônego")
-  - `isFullClergyDate()` - Verifica se a data é `YYYY-MM-DD` válida
+  - `isFullClergyDate()` - Verifica se a data é `YYYY-MM-DD` real (ano 0001–9999, bissexto gregoriano)
+  - `isValidClergyDate()` - Formato das datas do clero e dos vínculos: `YYYY` ou `YYYY-MM-DD` real; mesma regra do CHECK `is_valid_clergy_date()` da `016`
   - `getClergyYear()` - Ano de uma data (`YYYY` ou `YYYY-MM-DD`)
   - `getClergyAge()` - Idade em anos completos (até o falecimento, se houver); `null` quando só há o ano
   - `sortClergyByStartDate()` - Ordena por data de início
@@ -298,6 +299,7 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `012_clergy_honors.sql` - Coluna `honors text[]` em `clergy` com check dos valores permitidos (`canon`, `vicar-general`, `prefect-of-studies`)
 - `013_clergy_bios_without_parishes.sql` - Reescreve as bios sem citar paróquias (vínculos ficam em `church_clergy`)
 - `014_rls_permissoes_editor.sql` - Alinha o RLS à D3: trigger `BEFORE UPDATE` em `churches` que só deixa o editor alterar contato, foto e link do Maps; remove as políticas de escrita do editor em `church_clergy`
+- `016_integridade_formatos.sql` - VF-088: funções `is_valid_schedule_time(text)` e `is_valid_clergy_date(text)` e CHECKs de formato em `time`/`end_time` (`schedule_events`, `activity_schedules`), `birth_date`/`death_date` (`clergy`) e `start_date`/`end_date` (`church_clergy`), criados `not valid` e validados no fim; troca o `unique (church_id, clergy_id, start_date)` da `005` pelo índice único `church_clergy_church_clergy_start_key` com `nulls not distinct` (Postgres 15+). Roteiros: `016_integridade_formatos_pre_verificacao.sql` (antes) e `016_integridade_formatos_verificacao.sql` (depois)
 
 Roteiros de verificação manual ficam em `supabase/tests/` (ex.: `014_rls_permissoes_editor_verificacao.sql`), para rodar no SQL Editor dentro de `begin … rollback`.
 
@@ -441,6 +443,18 @@ Horários é a informação principal da página: a ausência também informa o 
 - Hoje o cargo fica em `clergy.role`, na pessoa — o ajuste do modelo está no board (VF-025), com perguntas em aberto (VF-003).
 - Clérigos falecidos e clérigos sem igreja ativa continuam aparecendo na listagem e na busca de `/clero`.
 - A `bio` descreve a pessoa (formação, ministério, cargos). Vínculos com igrejas ficam em `church_clergy`, não na bio.
+- Um vínculo (`church_clergy`) é único por igreja, clérigo e `start_date`, contando `start_date` nulo como valor (`016`). A regra da D1 (no máximo um vínculo **ativo** por clérigo) ainda não está no banco: fica para o VF-025.
+
+### Formatos de horário e data (VF-088)
+
+As colunas são `text` de propósito (VF-038). O banco aplica o formato por CHECK (`016`) com a mesma regra das funções puras de `lib/utils`, testadas com os mesmos casos de borda:
+
+| Colunas | Regra | TypeScript | SQL |
+|---------|-------|------------|-----|
+| `time`, `end_time` de `schedule_events` e `activity_schedules` | `HH:MM` com dois dígitos, 00:00–23:59, sem espaços (`7:30` e `24:00` são recusados) | `isValidTime()` | `is_valid_schedule_time()` |
+| `birth_date`, `death_date` de `clergy`; `start_date`, `end_date` de `church_clergy` | `YYYY` (0001–9999) ou `YYYY-MM-DD` real (sem `YYYY-MM`, sem `0000`, sem `2024-02-30`, sem espaços) | `isValidClergyDate()` | `is_valid_clergy_date()` |
+
+Nulo continua permitido onde a coluna aceita nulo (`end_time` e as datas). Os formulários (VF-021) devem aparar espaços e completar a hora com zero (`7:30` → `07:30`) antes de gravar. Mudou a regra: alterar a função TS, a função SQL (nova migration), os testes unitários e o roteiro de verificação juntos.
 
 ### Abrangência
 

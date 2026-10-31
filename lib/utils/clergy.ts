@@ -166,10 +166,22 @@ export function getPastClergyMembers(clergy: Clergy[]): Clergy[] {
   return clergy.filter((c) => !!c.endDate);
 }
 
-const FULL_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+// Só dígitos ASCII ([0-9], não \d), igual à regex do banco.
+const YEAR_ONLY = /^([0-9]{4})$/;
+const FULL_DATE = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function daysInMonth(year: number, month: number): number {
+  if (month === 2) return isLeapYear(year) ? 29 : 28;
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
 
 /**
- * True when the value is a real calendar date in YYYY-MM-DD.
+ * True when the value is a real calendar date in YYYY-MM-DD (year 0001–9999).
+ * Calcula os dias do mês sem `Date`, que trata anos < 100 como 19xx.
  */
 export function isFullClergyDate(value: string): boolean {
   const match = value.match(FULL_DATE);
@@ -178,13 +190,27 @@ export function isFullClergyDate(value: string): boolean {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  const date = new Date(year, month - 1, day);
 
   return (
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day
+    year >= 1 &&
+    month >= 1 &&
+    month <= 12 &&
+    day >= 1 &&
+    day <= daysInMonth(year, month)
   );
+}
+
+/**
+ * Formato aceito nas datas do clero (`birth_date`, `death_date`) e dos vínculos
+ * (`church_clergy.start_date`, `end_date`): só o ano (`YYYY`, 0001–9999) ou a
+ * data completa e real (`YYYY-MM-DD`). Sem espaços e sem `YYYY-MM`.
+ * Mesma regra do CHECK `is_valid_clergy_date()` (migration 016).
+ */
+export function isValidClergyDate(value: string): boolean {
+  if (typeof value !== "string") return false;
+  const year = value.match(YEAR_ONLY);
+  if (year) return Number(year[1]) >= 1;
+  return isFullClergyDate(value);
 }
 
 /**

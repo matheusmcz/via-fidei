@@ -26,20 +26,38 @@ describe("getDayName / getDayNameShort", () => {
   });
 });
 
+// Mesma regra do CHECK `is_valid_schedule_time()` da migration 016. Os casos de
+// borda abaixo se repetem em `supabase/tests/016_integridade_formatos_verificacao.sql`.
 describe("isValidTime", () => {
-  it.each(["00:00", "07:00", "7:00", "18:30", "23:59"])(
+  it.each(["00:00", "07:00", "09:59", "18:30", "19:05", "23:59"])(
     "aceita %s",
     (time) => {
       expect(isValidTime(time)).toBe(true);
     },
   );
 
-  it.each(["", "24:00", "12:60", "7h", "07:0", "07:00:00", " 07:00", "ab:cd"])(
-    "rejeita %j",
-    (time) => {
-      expect(isValidTime(time)).toBe(false);
-    },
-  );
+  it.each([
+    "",
+    " ",
+    "24:00",
+    "23:60",
+    "12:60",
+    "7:30",
+    "7:00",
+    "07:0",
+    "7h",
+    "07h00",
+    "07.00",
+    "0700",
+    "07:00:00",
+    " 07:00",
+    "07:00 ",
+    "07:00\n",
+    "ab:cd",
+    "٠٧:٠٠",
+  ])("rejeita %j", (time) => {
+    expect(isValidTime(time)).toBe(false);
+  });
 });
 
 describe("formatTime", () => {
@@ -56,6 +74,7 @@ describe("formatTime", () => {
   it("devolve o texto original quando o horário é inválido", () => {
     expect(formatTime("25:00")).toBe("25:00");
     expect(formatTime("à tarde")).toBe("à tarde");
+    expect(formatTime("7:30")).toBe("7:30");
   });
 });
 
