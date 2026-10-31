@@ -64,7 +64,7 @@ export default function LoginPage() {
               </div>
 
               {state?.error && (
-                <p className="text-sm text-destructive text-center">
+                <p role="alert" className="text-sm text-destructive text-center">
                   {state.error}
                 </p>
               )}

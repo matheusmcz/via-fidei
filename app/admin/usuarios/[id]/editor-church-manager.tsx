@@ -21,6 +21,7 @@ export function EditorChurchManager({
     new Set(linkedChurchIds)
   );
   const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const hasChanges =
@@ -41,9 +42,10 @@ export function EditorChurchManager({
 
   async function handleSave() {
     setIsPending(true);
+    setError(null);
     const result = await updateEditorChurches(editorId, Array.from(selected));
     if (result.error) {
-      alert(result.error);
+      setError(result.error);
     }
     router.refresh();
     setIsPending(false);
@@ -85,6 +87,12 @@ export function EditorChurchManager({
           </Button>
         )}
       </div>
+
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

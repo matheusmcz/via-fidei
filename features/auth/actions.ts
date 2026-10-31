@@ -2,6 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import {
+  getLoginOutcome,
+  isDeactivated,
+  SIGN_OUT_FAILED_HINT,
+  type ProfileAccess,
+} from "./access";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -28,15 +34,26 @@ export async function login(formData: FormData) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, is_active")
     .eq("id", user.id)
-    .single();
+    .maybeSingle<ProfileAccess>();
 
-  if (profile?.role === "admin") {
-    redirect("/admin");
+  const outcome = getLoginOutcome(profile);
+
+  if ("error" in outcome) {
+    // O signInWithPassword já gravou os cookies da sessão: encerrá-la para que
+    // o perfil recusado não continue logado. Perfil desativado derruba as
+    // sessões de todos os dispositivos; falha ao ler o perfil (provavelmente
+    // passageira, de um usuário ativo) encerra só esta.
+    const scope = isDeactivated(profile) ? "global" : "local";
+    const { error: signOutError } = await supabase.auth.signOut({ scope });
+    if (signOutError) {
+      return { error: `${outcome.error} ${SIGN_OUT_FAILED_HINT}` };
+    }
+    return { error: outcome.error };
   }
 
-  redirect("/");
+  redirect(outcome.redirectTo);
 }
 
 export async function logout() {

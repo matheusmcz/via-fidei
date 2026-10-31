@@ -3,10 +3,30 @@
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import {
+  EDITOR_NOT_FOUND_MESSAGE,
+  isActiveAdmin,
+  isEditorTarget,
+  type ProfileAccess,
+} from "./access";
+import {
+  parseCreateEditorInput,
+  parseEditorChurchesInput,
+  parseEditorId,
+} from "./admin-validation";
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
 type AdminAccess = { supabase: ServerClient } | { error: string };
+
+type EditorTarget = { editor: ProfileAccess } | { error: string };
+
+/** Código do PostgREST quando `.single()` não encontra a linha. */
+const NO_ROWS_ERROR_CODE = "PGRST116";
+
+function isNoRowsError(error: { code?: string }): boolean {
+  return error.code === NO_ROWS_ERROR_CODE;
+}
 
 async function requireAdmin(): Promise<AdminAccess> {
   const supabase = await createClient();
@@ -23,13 +43,35 @@ async function requireAdmin(): Promise<AdminAccess> {
     .from("profiles")
     .select("role, is_active")
     .eq("id", user.id)
-    .single();
+    .maybeSingle<ProfileAccess>();
 
-  if (profile?.role !== "admin" || !profile.is_active) {
+  if (!isActiveAdmin(profile)) {
     return { error: "Acesso negado" };
   }
 
   return { supabase };
+}
+
+/** Carrega o perfil alvo e só o aceita se for `editor` (nunca um admin). */
+async function findEditorTarget(
+  supabase: ServerClient,
+  editorId: string,
+): Promise<EditorTarget> {
+  const { data: target, error } = await supabase
+    .from("profiles")
+    .select("role, is_active")
+    .eq("id", editorId)
+    .maybeSingle<ProfileAccess>();
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  if (!isEditorTarget(target)) {
+    return { error: EDITOR_NOT_FOUND_MESSAGE };
+  }
+
+  return { editor: target };
 }
 
 export async function createEditor(formData: FormData) {
@@ -39,14 +81,17 @@ export async function createEditor(formData: FormData) {
   }
   const { supabase } = access;
 
-  const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const churchIds = formData.getAll("churchIds") as string[];
+  const input = parseCreateEditorInput({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    churchIds: formData.getAll("churchIds"),
+  });
 
-  if (!name || !email || !password) {
-    return { error: "Nome, email e senha são obrigatórios" };
+  if (!input.success) {
+    return { error: input.error };
   }
+  const { name, email, password, churchIds } = input.data;
 
   let adminAuth;
   try {
@@ -72,14 +117,21 @@ export async function createEditor(formData: FormData) {
 
   const userId = authData.user.id;
 
+  // O trigger handle_new_user cria o perfil sem permissão (015): ativar aqui,
+  // explicitamente. O select confirma que a linha foi de fato atualizada.
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ name, role: "editor" })
-    .eq("id", userId);
+    .update({ name, role: "editor", is_active: true })
+    .eq("id", userId)
+    .select("id")
+    .single();
 
   if (profileError) {
     await adminAuth.auth.admin.deleteUser(userId);
-    return { error: `Erro ao atualizar perfil: ${profileError.message}` };
+    const reason = isNoRowsError(profileError)
+      ? "o perfil do novo editor não foi criado"
+      : profileError.message;
+    return { error: `Erro ao atualizar perfil: ${reason}` };
   }
 
   if (churchIds.length > 0) {
@@ -109,27 +161,35 @@ export async function toggleEditorActive(editorId: string) {
   }
   const { supabase } = access;
 
-  const { data: editor } = await supabase
-    .from("profiles")
-    .select("is_active")
-    .eq("id", editorId)
-    .single();
+  const parsedId = parseEditorId(editorId);
+  if (!parsedId.success) {
+    return { error: parsedId.error };
+  }
+  const id = parsedId.data;
 
-  if (!editor) {
-    return { error: "Editor não encontrado" };
+  const target = await findEditorTarget(supabase, id);
+  if ("error" in target) {
+    return { error: target.error };
   }
 
+  // O select confirma que um editor foi de fato atualizado (o papel pode ter
+  // mudado entre a leitura e a escrita, ou o RLS filtrar a linha).
   const { error } = await supabase
     .from("profiles")
-    .update({ is_active: !editor.is_active })
-    .eq("id", editorId);
+    .update({ is_active: !target.editor.is_active })
+    .eq("id", id)
+    .eq("role", "editor")
+    .select("id")
+    .single();
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: isNoRowsError(error) ? EDITOR_NOT_FOUND_MESSAGE : error.message,
+    };
   }
 
   revalidatePath("/admin/usuarios");
-  revalidatePath(`/admin/usuarios/${editorId}`);
+  revalidatePath(`/admin/usuarios/${id}`);
   return { success: true };
 }
 
@@ -143,10 +203,21 @@ export async function updateEditorChurches(
   }
   const { supabase } = access;
 
+  const input = parseEditorChurchesInput({ editorId, churchIds });
+  if (!input.success) {
+    return { error: input.error };
+  }
+  const { editorId: id, churchIds: nextChurchIds } = input.data;
+
+  const target = await findEditorTarget(supabase, id);
+  if ("error" in target) {
+    return { error: target.error };
+  }
+
   const { data: currentLinks, error: currentError } = await supabase
     .from("editor_churches")
     .select("church_id")
-    .eq("editor_id", editorId);
+    .eq("editor_id", id);
 
   if (currentError) {
     return { error: currentError.message };
@@ -155,15 +226,15 @@ export async function updateEditorChurches(
   const currentIds = new Set<string>(
     (currentLinks ?? []).map((link: { church_id: string }) => link.church_id)
   );
-  const nextIds = new Set(churchIds);
-  const toAdd = churchIds.filter((id) => !currentIds.has(id));
-  const toRemove = [...currentIds].filter((id) => !nextIds.has(id));
+  const nextIds = new Set(nextChurchIds);
+  const toAdd = nextChurchIds.filter((churchId) => !currentIds.has(churchId));
+  const toRemove = [...currentIds].filter((churchId) => !nextIds.has(churchId));
 
   // Inserir antes de remover: se a inserção falhar, os vínculos atuais continuam intactos.
   if (toAdd.length > 0) {
     const { error: insertError } = await supabase
       .from("editor_churches")
-      .insert(toAdd.map((churchId) => ({ editor_id: editorId, church_id: churchId })));
+      .insert(toAdd.map((churchId) => ({ editor_id: id, church_id: churchId })));
 
     if (insertError) {
       return { error: insertError.message };
@@ -174,7 +245,7 @@ export async function updateEditorChurches(
     const { error: deleteError } = await supabase
       .from("editor_churches")
       .delete()
-      .eq("editor_id", editorId)
+      .eq("editor_id", id)
       .in("church_id", toRemove);
 
     if (deleteError) {
@@ -183,6 +254,6 @@ export async function updateEditorChurches(
   }
 
   revalidatePath("/admin/usuarios");
-  revalidatePath(`/admin/usuarios/${editorId}`);
+  revalidatePath(`/admin/usuarios/${id}`);
   return { success: true };
 }
