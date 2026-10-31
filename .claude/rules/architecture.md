@@ -10,6 +10,7 @@ O projeto é organizado por **domínio/feature**, não por tipo de arquivo. Deta
 | `components/` | Componentes compartilhados entre features (ex.: footer) |
 | `lib/supabase/` | Clientes Supabase, resolução de env e queries |
 | `lib/utils/` | Funções utilitárias de domínio, puras |
+| `lib/security/` | Cabeçalhos HTTP de segurança (funções puras usadas pelo `next.config.ts`) |
 | `types/` | Tipos TypeScript de domínio |
 | `data/` | Dados legados em TS — fonte do seed, **não** importar em runtime |
 | `supabase/migrations/` | Schema e RLS versionados em SQL |

@@ -236,6 +236,10 @@ Código auxiliar reutilizável.
   - `formatFacebookName()` / `getFacebookUrl()` - Facebook
   - `getWebsiteUrl()` / `formatWebsiteForDisplay()` - Website
 
+**`/lib/security`** - Cabeçalhos HTTP de segurança
+
+- `headers.ts` - `buildSecurityHeaders()` e `buildContentSecurityPolicy()`, puras, usadas pelo `next.config.ts` (ver [Cabeçalhos de segurança](#cabeçalhos-de-segurança-vf-081))
+
 ### `/types` - Definições de tipos TypeScript
 
 Tipos e interfaces compartilhados.
@@ -353,6 +357,36 @@ Stack definida na D9. Nenhum teste grava no Supabase; os que precisarem gravar d
 - Tipagem forte desde o início
 - Chaves React estáveis (não usar índice de array)
 - Validação de dados de entrada (ex: formato de hora)
+
+## Cabeçalhos de segurança (VF-081)
+
+Montados por funções puras em [`lib/security/headers.ts`](../../lib/security/headers.ts) (`buildSecurityHeaders`, `buildContentSecurityPolicy`, testadas em `headers.test.ts`) e aplicados a todas as rotas (`/:path*`) em `headers()` do [`next.config.ts`](../../next.config.ts). Nada de middleware nem renderização dinâmica: os cabeçalhos são fixos por build.
+
+| Cabeçalho | Valor | Motivo |
+|-----------|-------|--------|
+| `Content-Security-Policy` | ver abaixo, **aplicada** (não report-only) | Limita origens de script, conexão, imagem e fonte; bloqueia frames de terceiros |
+| `X-Frame-Options` | `DENY` | Clickjacking em navegadores sem `frame-ancestors` |
+| `X-Content-Type-Options` | `nosniff` | Impede o navegador de adivinhar o tipo do arquivo |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Para fora do site vai só a origem, sem caminho |
+| `Permissions-Policy` | `accelerometer`, `browsing-topics`, `camera`, `geolocation`, `gyroscope`, `magnetometer`, `microphone`, `payment`, `usb` desligados | O site não usa nenhum desses recursos |
+| `Strict-Transport-Security` | **não definido no app** | A Vercel já envia (`max-age=63072000; includeSubDomains; preload` no `*.vercel.app`); um segundo valor poderia conflitar |
+
+CSP em produção:
+
+```
+default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';
+img-src 'self'; font-src 'self'; connect-src 'self' <origem do Supabase>;
+object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+```
+
+- **Por que `'unsafe-inline'` em `script-src`, sem hash nem nonce.** As páginas públicas são estáticas com ISR: o HTML sai do build e da revalidação, não de cada requisição, então não há como gerar nonce sem trocar para renderização dinâmica (descartado). O Next 15 injeta scripts inline do RSC (`self.__next_f.push(...)`) que mudam a cada build e página, e não dá para listar os hashes num cabeçalho definido antes do build. Pôr só o hash do script de tema também não serve: com um hash ou nonce presente, o navegador **ignora** o `'unsafe-inline'` e bloqueia os scripts do RSC. O ganho da CSP fica nas outras diretivas: scripts externos só da própria origem, `connect-src` restrito ao Supabase (dificulta exfiltração), sem plugins, sem `<base>` injetado, formulários só para o próprio site e sem ser emoldurado. O script de tema do `app/layout.tsx` continua inline, sem mudança.
+- **`style-src 'unsafe-inline'`**: o `next/image` e o Radix renderizam atributos `style`.
+- **Imagens e fontes só da mesma origem**: as imagens estão em `/images` e passam pelo otimizador em `/_next/image` (sem `remotePatterns`); o `next/font/google` serve as fontes do próprio site. Sem `data:`/`blob:`. Ao liberar imagens externas (ex.: Storage do Supabase), acrescentar a origem em `img-src` e em `images.remotePatterns`.
+- **`connect-src`**: a origem vem da mesma variável que o `next.config.ts` espelha para `NEXT_PUBLIC_SUPABASE_URL` (`NEXT_PUBLIC_SUPABASE_URL` ou `SUPABASE_URL`); nunca valor fixo. URL inválida quebra o build com mensagem que não repete o valor. Sem `wss:`: o app não usa Realtime. Se passar a usar, acrescentar `wss://<projeto>.supabase.co`.
+- **Vercel Analytics** (`@vercel/analytics` 1.6.1): em produção carrega `/_vercel/insights/script.js` e envia para `/_vercel/insights/*`, ambos na mesma origem. Em `next start` local a rota responde 404 em HTML (o script só existe na Vercel): não há violação de CSP, mas o `nosniff` faz o navegador recusar executar o HTML e registrar um erro no console. Por isso o e2e simula `/_vercel/insights/**` com JS vazio.
+- **Variações por ambiente** (opções da função): `next dev` acrescenta `'unsafe-eval'` (React em desenvolvimento) e `https://va.vercel-scripts.com` (script de debug do Analytics); o **Preview da Vercel** (`VERCEL_ENV=preview`) libera a barra de ferramentas (`vercel.live`, `vercel.com`, `assets.vercel.com`, `wss://ws-us3.pusher.com`, `frame-src`) conforme a documentação da Vercel. Produção não recebe nenhuma dessas fontes.
+- **Aplicada, não report-only**: tudo o que a página carrega é da mesma origem ou do Supabase, e o e2e confere em build de produção que `/`, `/igreja/[slug]`, `/clero`, `/login` e o redirecionamento de `/admin` não geram violação (tema claro e escuro, imagens do otimizador). O que não dá para validar localmente (área logada, barra da Vercel) está coberto pelas mesmas origens. Não há endpoint de relatório (`report-to`).
+- **E2E**: [`tests/e2e/security-headers.spec.ts`](../../tests/e2e/security-headers.spec.ts) confere os cabeçalhos, escuta `securitypolicyviolation`, erros do console e de hidratação, e prova que o script inline de tema roda sob a CSP (bloqueia os chunks JS do Next e verifica a classe `dark`).
 
 ## Controle de acesso
 
