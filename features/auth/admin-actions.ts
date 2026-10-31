@@ -117,10 +117,11 @@ export async function createEditor(formData: FormData) {
 
   const userId = authData.user.id;
 
-  // O select confirma que a linha foi de fato atualizada.
+  // O trigger handle_new_user cria o perfil sem permissão (015): ativar aqui,
+  // explicitamente. O select confirma que a linha foi de fato atualizada.
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ name, role: "editor" })
+    .update({ name, role: "editor", is_active: true })
     .eq("id", userId)
     .select("id")
     .single();

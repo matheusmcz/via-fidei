@@ -86,7 +86,7 @@ beforeEach(() => {
 });
 
 describe("createEditor", () => {
-  it("cria o usuário e grava o perfil como editor", async () => {
+  it("cria o usuário e ativa o perfil como editor, explicitamente", async () => {
     const client = mockServerClient(
       [ACTIVE_ADMIN, { data: { id: NEW_USER_ID }, error: null }],
       { editor_churches: OK },
@@ -103,7 +103,7 @@ describe("createEditor", () => {
     );
     const [update] = findQueries(client, "profiles", "update");
     expect(argsOf(update, "update")).toEqual([
-      { name: "Maria das Graças", role: "editor" },
+      { name: "Maria das Graças", role: "editor", is_active: true },
     ]);
     expect(argsOf(update, "eq")).toEqual(["id", NEW_USER_ID]);
     const [link] = findQueries(client, "editor_churches", "insert");

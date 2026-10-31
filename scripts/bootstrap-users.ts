@@ -1,6 +1,9 @@
 /**
  * Cria usuário admin e usuário editor de teste no Supabase (Auth + profiles + editor_churches).
  *
+ * O perfil criado pelo trigger handle_new_user nasce inativo (migration 015);
+ * o script ativa os dois perfis explicitamente.
+ *
  * Uso: defina variáveis de ambiente e rode:
  *   npm run bootstrap-users
  *
@@ -121,7 +124,7 @@ async function main() {
 
   const { error: adminProfileError } = await supabase
     .from("profiles")
-    .update({ name: adminName, role: "admin" })
+    .update({ name: adminName, role: "admin", is_active: true })
     .eq("id", adminId);
 
   if (adminProfileError) {
@@ -134,7 +137,7 @@ async function main() {
 
   const { error: editorProfileError } = await supabase
     .from("profiles")
-    .update({ name: editorName, role: "editor" })
+    .update({ name: editorName, role: "editor", is_active: true })
     .eq("id", editorId);
 
   if (editorProfileError) {
