@@ -22,6 +22,7 @@ import {
   getRoleLabel,
   isActiveClergyMember,
   isFullClergyDate,
+  isValidClergyDate,
   sortClergyByName,
   sortClergyByRole,
   sortClergyByStartDate,
@@ -158,12 +159,75 @@ describe("isFullClergyDate", () => {
     expect(isFullClergyDate("2024-02-29")).toBe(true);
   });
 
-  it.each(["1970", "1970-05", "2023-02-29", "1970-13-01", "20/05/1970", ""])(
-    "rejeita %j",
-    (value) => {
-      expect(isFullClergyDate(value)).toBe(false);
-    },
-  );
+  it("aceita anos com zeros à esquerda, sem o desvio do Date para anos < 100", () => {
+    expect(isFullClergyDate("0001-01-01")).toBe(true);
+    expect(isFullClergyDate("0050-06-15")).toBe(true);
+  });
+
+  it.each([
+    "1970",
+    "1970-05",
+    "2023-02-29",
+    "1900-02-29",
+    "2024-02-30",
+    "2024-04-31",
+    "1970-13-01",
+    "1970-00-10",
+    "1970-01-00",
+    "0000-01-01",
+    "20/05/1970",
+    "",
+  ])("rejeita %j", (value) => {
+    expect(isFullClergyDate(value)).toBe(false);
+  });
+});
+
+// Mesma regra do CHECK `is_valid_clergy_date()` da migration 016. Os casos de
+// borda abaixo se repetem em `supabase/tests/016_integridade_formatos_verificacao.sql`.
+describe("isValidClergyDate", () => {
+  it.each([
+    "1970",
+    "2026",
+    "0001",
+    "9999",
+    "1970-05-20",
+    "2000-02-29",
+    "2024-02-29",
+    "2024-12-31",
+    "0001-01-01",
+  ])("aceita %s", (value) => {
+    expect(isValidClergyDate(value)).toBe(true);
+  });
+
+  it.each([
+    "",
+    " ",
+    "0000",
+    "0000-01-01",
+    "197",
+    "19700",
+    "1970-05",
+    "1970-5-20",
+    "1970-05-2",
+    "2024-02-30",
+    "2023-02-29",
+    "1900-02-29",
+    "2024-04-31",
+    "2024-13-01",
+    "2024-00-10",
+    "2024-01-00",
+    "20/05/1970",
+    "1970/05/20",
+    "19700520",
+    " 1970",
+    "1970 ",
+    "1970\n",
+    "1970-05-20T00:00",
+    "abcd",
+    "١٩٧٠",
+  ])("rejeita %j", (value) => {
+    expect(isValidClergyDate(value)).toBe(false);
+  });
 });
 
 describe("getClergyYear", () => {
