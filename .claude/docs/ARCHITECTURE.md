@@ -45,7 +45,7 @@ Resumo do que está em produção hoje:
 
 | Camada | Descrição |
 |--------|-----------|
-| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`015`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026; a `014` e a `015` precisam ser aplicadas pelo SQL Editor depois do merge e conferidas com os roteiros `supabase/tests/014_rls_permissoes_editor_verificacao.sql` e `supabase/tests/015_perfil_inicial_sem_permissao_verificacao.sql` — conferir o estado pelo schema, não por `supabase migration list`. |
+| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`016`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026; a `014` foi aplicada e conferida com o roteiro `supabase/tests/014_rls_permissoes_editor_verificacao.sql` em 31/10/2026; a `015` e a `016` precisam ser aplicadas pelo SQL Editor depois do merge e conferidas com os roteiros de `supabase/tests/` (a `016` tem também uma pré-verificação, que roda antes) — conferir o estado pelo schema, não por `supabase migration list`. |
 | **Chaves públicas** | URL + chave **publishable** ou **anon** (JWT) para o cliente. Resolução central em [`lib/supabase/env.ts`](../../lib/supabase/env.ts) — ver subseção **Variáveis de ambiente (Supabase + Vercel)** abaixo. `SUPABASE_SERVICE_ROLE_KEY` **apenas** servidor / `npm run seed` ([API keys](https://supabase.com/docs/guides/api/api-keys)). |
 | **Auth** | Supabase Auth + cookies (`@supabase/ssr`); [`middleware.ts`](../../middleware.ts) na raiz renova a sessão; [`features/auth/`](../../features/auth/) expõe `AuthProvider` e `useAuth`. |
 | **Leitura pública** | [`lib/supabase/public.ts`](../../lib/supabase/public.ts) — `createClient` do `@supabase/supabase-js` só com chave pública, **sem** `cookies()`. Usado em [`lib/supabase/queries/`](../../lib/supabase/queries/) (listagens, detalhes, `generateStaticParams`). |
@@ -211,7 +211,7 @@ Código auxiliar reutilizável.
   - `getOrderedDays()` - Dias ordenados (domingo primeiro)
   - `canGroupWeekdays()` - Verifica se pode agrupar dias úteis
   - `formatRecurrence()` - Label de recorrência ("1ª Sexta-feira do mês")
-  - `isValidTime()` - Valida formato HH:MM
+  - `isValidTime()` - Valida `HH:MM` com dois dígitos (00:00–23:59); mesma regra do CHECK `is_valid_schedule_time()` da `016`
   - `getEventKey()` - Gera chave única para React
 - `clergy.ts` - Utilitários de clero:
   - `getRoleLabel()` - Traduz role para português ("Pároco", "Vigário")
@@ -222,7 +222,8 @@ Código auxiliar reutilizável.
   - `getPastClergyMembers()` - Filtra clérigos anteriores
   - `formatClergyTenure()` - Período de atuação ("2021 - Atual")
   - `getClergyHonors()` / `getClergyHonorLabel()` - Filtra títulos conhecidos na ordem de exibição e traduz ("Cônego")
-  - `isFullClergyDate()` - Verifica se a data é `YYYY-MM-DD` válida
+  - `isFullClergyDate()` - Verifica se a data é `YYYY-MM-DD` real (ano 0001–9999, bissexto gregoriano)
+  - `isValidClergyDate()` - Formato das datas do clero e dos vínculos: `YYYY` ou `YYYY-MM-DD` real; mesma regra do CHECK `is_valid_clergy_date()` da `016`
   - `getClergyYear()` - Ano de uma data (`YYYY` ou `YYYY-MM-DD`)
   - `getClergyAge()` - Idade em anos completos (até o falecimento, se houver); `null` quando só há o ano
   - `sortClergyByStartDate()` - Ordena por data de início
@@ -237,6 +238,10 @@ Código auxiliar reutilizável.
   - `formatInstagramHandle()` / `getInstagramUrl()` - Instagram
   - `formatFacebookName()` / `getFacebookUrl()` - Facebook
   - `getWebsiteUrl()` / `formatWebsiteForDisplay()` - Website
+
+**`/lib/security`** - Cabeçalhos HTTP de segurança
+
+- `headers.ts` - `buildSecurityHeaders()` e `buildContentSecurityPolicy()`, puras, usadas pelo `next.config.ts` (ver [Cabeçalhos de segurança](#cabeçalhos-de-segurança-vf-081))
 
 ### `/types` - Definições de tipos TypeScript
 
@@ -301,6 +306,7 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `013_clergy_bios_without_parishes.sql` - Reescreve as bios sem citar paróquias (vínculos ficam em `church_clergy`)
 - `014_rls_permissoes_editor.sql` - Alinha o RLS à D3: trigger `BEFORE UPDATE` em `churches` que só deixa o editor alterar contato, foto e link do Maps; remove as políticas de escrita do editor em `church_clergy`
 - `015_perfil_inicial_sem_permissao.sql` - Perfil novo nasce sem permissão (VF-082): default de `profiles.is_active` passa a `false` e `handle_new_user()` grava `role = 'editor'` e `is_active = false` explicitamente. Não altera perfis existentes
+- `016_integridade_formatos.sql` - VF-088: funções `is_valid_schedule_time(text)` e `is_valid_clergy_date(text)` e CHECKs de formato em `time`/`end_time` (`schedule_events`, `activity_schedules`), `birth_date`/`death_date` (`clergy`) e `start_date`/`end_date` (`church_clergy`), criados `not valid` e validados no fim; troca o `unique (church_id, clergy_id, start_date)` da `005` pelo índice único `church_clergy_church_clergy_start_key` com `nulls not distinct` (Postgres 15+). Roteiros: `016_integridade_formatos_pre_verificacao.sql` (antes) e `016_integridade_formatos_verificacao.sql` (depois)
 
 Roteiros de verificação manual ficam em `supabase/tests/` (ex.: `014_rls_permissoes_editor_verificacao.sql`), para rodar no SQL Editor dentro de `begin … rollback`.
 
@@ -325,7 +331,7 @@ Stack definida na D9. Nenhum teste grava no Supabase; os que precisarem gravar d
 - `tests/setup/env.ts`: apaga as variáveis do Supabase antes dos testes do Vitest, para que nenhum teste alcance o banco real (local e CI se comportam igual).
 - `tests/setup/dom.ts`: matchers do jest-dom, `cleanup` entre testes e stubs de APIs que o jsdom não tem (usadas pelo Radix).
 - `tests/fixtures/domain.ts`: `makeChurch`, `makeClergy`, `makeClergyWithChurch`.
-- `tests/fixtures/supabase.ts`: cliente Supabase simulado; qualquer cadeia de filtros resolve com o resultado configurado por tabela. Usado com `vi.mock("@/lib/supabase/public")` e `mockPublicClient(resultadosPorTabela)`. Não registra os filtros (`eq`, `order`…).
+- `tests/fixtures/supabase.ts`: cliente Supabase simulado; qualquer cadeia de filtros resolve com a resposta configurada por tabela (tabela sem resposta volta lista vazia). Usado com `vi.mock("@/lib/supabase/public")` e `mockPublicClient(respostasPorTabela)`. Registra as tabelas em `client.tables` e cada método encadeado em `client.calls` (`{ table, method, args }`); `callsTo(client, tabela, método)` filtra as chamadas (ex.: os `eq` de `churches`). A resposta `{ reject: Error }` simula o `fetch` rejeitado.
 - `tests/fixtures/supabase-auth.ts`: cliente simulado com `auth` (`getUser`, `signInWithPassword`, `signOut`, `onAuthStateChange`) para Server Actions e `AuthProvider`. Aceita fila de resultados por tabela (cada `from()` consome o próximo) e registra a cadeia de chamadas com os argumentos (`findQueries`, `argsOf`), para conferir o que seria gravado.
 - [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml): em PR e push para `develop` e `main`. Jobs: `quality` (lint, tipos, unitários, integração; sem secrets), `supabase-env` (falha com mensagem clara se faltarem os secrets), `build` (envia o `.next` como artefato) e `e2e` (reaproveita o build; cache dos browsers do Playwright). Secrets do repositório: `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (chave pública, nunca a `service_role`).
 - `.gitignore` ignora só `.github/copilot-instructions.md` (VF-062); o restante de `.github/` é versionado.
@@ -357,6 +363,36 @@ Stack definida na D9. Nenhum teste grava no Supabase; os que precisarem gravar d
 - Tipagem forte desde o início
 - Chaves React estáveis (não usar índice de array)
 - Validação de dados de entrada (ex: formato de hora)
+
+## Cabeçalhos de segurança (VF-081)
+
+Montados por funções puras em [`lib/security/headers.ts`](../../lib/security/headers.ts) (`buildSecurityHeaders`, `buildContentSecurityPolicy`, testadas em `headers.test.ts`) e aplicados a todas as rotas (`/:path*`) em `headers()` do [`next.config.ts`](../../next.config.ts). Nada de middleware nem renderização dinâmica: os cabeçalhos são fixos por build.
+
+| Cabeçalho | Valor | Motivo |
+|-----------|-------|--------|
+| `Content-Security-Policy` | ver abaixo, **aplicada** (não report-only) | Limita origens de script, conexão, imagem e fonte; bloqueia frames de terceiros |
+| `X-Frame-Options` | `DENY` | Clickjacking em navegadores sem `frame-ancestors` |
+| `X-Content-Type-Options` | `nosniff` | Impede o navegador de adivinhar o tipo do arquivo |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Para fora do site vai só a origem, sem caminho |
+| `Permissions-Policy` | `accelerometer`, `browsing-topics`, `camera`, `geolocation`, `gyroscope`, `magnetometer`, `microphone`, `payment`, `usb` desligados | O site não usa nenhum desses recursos |
+| `Strict-Transport-Security` | **não definido no app** | A Vercel já envia (`max-age=63072000; includeSubDomains; preload` no `*.vercel.app`); um segundo valor poderia conflitar |
+
+CSP em produção:
+
+```
+default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';
+img-src 'self'; font-src 'self'; connect-src 'self' <origem do Supabase>;
+object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+```
+
+- **Por que `'unsafe-inline'` em `script-src`, sem hash nem nonce.** As páginas públicas são estáticas com ISR: o HTML sai do build e da revalidação, não de cada requisição, então não há como gerar nonce sem trocar para renderização dinâmica (descartado). O Next 15 injeta scripts inline do RSC (`self.__next_f.push(...)`) que mudam a cada build e página, e não dá para listar os hashes num cabeçalho definido antes do build. Pôr só o hash do script de tema também não serve: com um hash ou nonce presente, o navegador **ignora** o `'unsafe-inline'` e bloqueia os scripts do RSC. O ganho da CSP fica nas outras diretivas: scripts externos só da própria origem, `connect-src` restrito ao Supabase (dificulta exfiltração), sem plugins, sem `<base>` injetado, formulários só para o próprio site e sem ser emoldurado. O script de tema do `app/layout.tsx` continua inline, sem mudança.
+- **`style-src 'unsafe-inline'`**: o `next/image` e o Radix renderizam atributos `style`.
+- **Imagens e fontes só da mesma origem**: as imagens estão em `/images` e passam pelo otimizador em `/_next/image` (sem `remotePatterns`); o `next/font/google` serve as fontes do próprio site. Sem `data:`/`blob:`. Ao liberar imagens externas (ex.: Storage do Supabase), acrescentar a origem em `img-src` e em `images.remotePatterns`.
+- **`connect-src`**: a origem vem da mesma variável que o `next.config.ts` espelha para `NEXT_PUBLIC_SUPABASE_URL` (`NEXT_PUBLIC_SUPABASE_URL` ou `SUPABASE_URL`); nunca valor fixo. URL inválida quebra o build com mensagem que não repete o valor. Sem `wss:`: o app não usa Realtime. Se passar a usar, acrescentar `wss://<projeto>.supabase.co`.
+- **Vercel Analytics** (`@vercel/analytics` 1.6.1): em produção carrega `/_vercel/insights/script.js` e envia para `/_vercel/insights/*`, ambos na mesma origem. Em `next start` local a rota responde 404 em HTML (o script só existe na Vercel): não há violação de CSP, mas o `nosniff` faz o navegador recusar executar o HTML e registrar um erro no console. Por isso o e2e simula `/_vercel/insights/**` com JS vazio.
+- **Variações por ambiente** (opções da função): `next dev` acrescenta `'unsafe-eval'` (React em desenvolvimento) e `https://va.vercel-scripts.com` (script de debug do Analytics); o **Preview da Vercel** (`VERCEL_ENV=preview`) libera a barra de ferramentas (`vercel.live`, `vercel.com`, `assets.vercel.com`, `wss://ws-us3.pusher.com`, `frame-src`) conforme a documentação da Vercel. Produção não recebe nenhuma dessas fontes.
+- **Aplicada, não report-only**: tudo o que a página carrega é da mesma origem ou do Supabase, e o e2e confere em build de produção que `/`, `/igreja/[slug]`, `/clero`, `/login` e o redirecionamento de `/admin` não geram violação (tema claro e escuro, imagens do otimizador). O que não dá para validar localmente (área logada, barra da Vercel) está coberto pelas mesmas origens. Não há endpoint de relatório (`report-to`).
+- **E2E**: [`tests/e2e/security-headers.spec.ts`](../../tests/e2e/security-headers.spec.ts) confere os cabeçalhos, escuta `securitypolicyviolation`, erros do console e de hidratação, e prova que o script inline de tema roda sob a CSP (bloqueia os chunks JS do Next e verifica a classe `dark`).
 
 ## Controle de acesso
 
@@ -450,6 +486,18 @@ Horários é a informação principal da página: a ausência também informa o 
 - Hoje o cargo fica em `clergy.role`, na pessoa — o ajuste do modelo está no board (VF-025), com perguntas em aberto (VF-003).
 - Clérigos falecidos e clérigos sem igreja ativa continuam aparecendo na listagem e na busca de `/clero`.
 - A `bio` descreve a pessoa (formação, ministério, cargos). Vínculos com igrejas ficam em `church_clergy`, não na bio.
+- Um vínculo (`church_clergy`) é único por igreja, clérigo e `start_date`, contando `start_date` nulo como valor (`016`). A regra da D1 (no máximo um vínculo **ativo** por clérigo) ainda não está no banco: fica para o VF-025.
+
+### Formatos de horário e data (VF-088)
+
+As colunas são `text` de propósito (VF-038). O banco aplica o formato por CHECK (`016`) com a mesma regra das funções puras de `lib/utils`, testadas com os mesmos casos de borda:
+
+| Colunas | Regra | TypeScript | SQL |
+|---------|-------|------------|-----|
+| `time`, `end_time` de `schedule_events` e `activity_schedules` | `HH:MM` com dois dígitos, 00:00–23:59, sem espaços (`7:30` e `24:00` são recusados) | `isValidTime()` | `is_valid_schedule_time()` |
+| `birth_date`, `death_date` de `clergy`; `start_date`, `end_date` de `church_clergy` | `YYYY` (0001–9999) ou `YYYY-MM-DD` real (sem `YYYY-MM`, sem `0000`, sem `2024-02-30`, sem espaços) | `isValidClergyDate()` | `is_valid_clergy_date()` |
+
+Nulo continua permitido onde a coluna aceita nulo (`end_time` e as datas). Os formulários (VF-021) devem aparar espaços e completar a hora com zero (`7:30` → `07:30`) antes de gravar. Mudou a regra: alterar a função TS, a função SQL (nova migration), os testes unitários e o roteiro de verificação juntos.
 
 ### Abrangência
 

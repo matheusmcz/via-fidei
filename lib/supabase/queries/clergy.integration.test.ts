@@ -44,7 +44,7 @@ describe("getAllClergyWithChurch (query)", () => {
   it("consulta a tabela clergy", async () => {
     const client = mockClergyTable({ data: [], error: null });
     await getAllClergyWithChurch();
-    expect(client.calls).toEqual(["clergy"]);
+    expect(client.tables).toEqual(["clergy"]);
   });
 
   it("usa o vínculo ativo para a igreja e o período atual", async () => {

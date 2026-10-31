@@ -33,9 +33,10 @@ paths:
 
 - IDs são UUIDs gerados pelo Supabase.
 - Slugs via `slugify()` de `@/lib/utils`.
-- Horários no formato `HH:MM` (validar com `isValidTime()`).
+- Horários no formato `HH:MM` com dois dígitos, 00:00–23:59 (validar com `isValidTime()`; o banco aplica a mesma regra por CHECK desde a `016`).
 - Dias da semana como `DayOfWeek` (0 = domingo, 6 = sábado).
-- Datas do clero (`birth_date`, `death_date`, `start_date`, `end_date`) são texto: ano (`YYYY`) ou data completa (`YYYY-MM-DD`).
+- Datas do clero (`birth_date`, `death_date`, `start_date`, `end_date`) são texto: ano (`YYYY`) ou data completa e real (`YYYY-MM-DD`). Validar com `isValidClergyDate()`; o banco aplica a mesma regra por CHECK desde a `016`.
+- Regra de formato nova ou alterada: função pura em `lib/utils` + CHECK com a mesma regra em migration, com os mesmos casos de borda no teste unitário e no roteiro de verificação.
 
 ## Regras de domínio do clero
 
