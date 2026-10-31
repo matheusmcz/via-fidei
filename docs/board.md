@@ -2,7 +2,7 @@
 
 Controle das demandas do projeto: o que está em andamento, o que falta fazer, as decisões tomadas e o que já foi entregue.
 
-**Atualizado em:** 30/10/2026 (orquestração — Fase 1)
+**Atualizado em:** 31/10/2026 (Fase 1 concluída; Fase 2 iniciada)
 
 ## Como usar
 
@@ -22,23 +22,20 @@ Controle das demandas do projeto: o que está em andamento, o que falta fazer, a
 
 Trabalho em fases, com sessões paralelas coordenadas por uma sessão orquestradora (D12). Cada sessão trabalha em uma branch própria a partir de `develop` e abre um PR; o merge é do usuário.
 
-**Fase 1 — altos + base de testes**
+**Fase 2 — médios, leva 1** (31/10/2026)
 
-- [ ] **VF-030** · Falha do Supabase vira 404 em cache — sessão A, **PR #24** (aguardando merge).
-- [ ] **VF-011** · RLS do editor conforme a D3 (D11) — sessão B, **PR #25** (aguardando merge; depois, aplicar a `014` e rodar o roteiro de verificação no SQL Editor).
-- [ ] **VF-036** · Testes automatizados e CI, com a parte do `.gitignore` do VF-062 (D13) — sessão C, **PR #26** (aguardando merge; antes, criar os secrets `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no GitHub).
+- [ ] **VF-082 + VF-013 + VF-083** · Perfil nasce sem permissão, editor desativado não entra e validação nas Server Actions de admin — sessão E, branch `fix/auth-perfil-e-validacao`, migration `015`.
+- [ ] **VF-081** · Cabeçalhos de segurança — sessão F, branch `fix/cabecalhos-seguranca`.
+- [ ] **VF-100 + VF-101** · Testes de `getChurchBySlug` e do cliente simulado — sessão G, branch `test/get-church-by-slug`.
+- [ ] **VF-088** · Integridade no banco (formatos de hora e data, duplicatas no clero) — sessão D, branch `fix/integridade-banco`, migration `016`.
 
 **Próximas fases (planejamento)**
 
 | Fase | Itens | Observação |
 |------|-------|------------|
-| 2 · médios | Banco: VF-082, VF-088, VF-093 | Uma sessão; migrations em sequência a partir da `015` |
-| | Auth e admin: VF-013, VF-083, VF-085, VF-086, VF-091, VF-104 | Em sequência (mesmos arquivos) |
-| | Testes: VF-101 e VF-100 | Depois do merge de #24 e #26 |
-| | VF-098 (Supabase local) | Depende de Docker na máquina; no CI o runner já tem |
-| | App: VF-081, VF-090, VF-092 | Em paralelo |
-| | Página da igreja: VF-084, VF-035 | Depois do VF-030 (mesmo arquivo) |
-| | Com o usuário: VF-010, VF-087, VF-089 | Configuração no Supabase e acesso ao CLI |
+| 2 · médios, leva 2 | VF-093 (auditoria, migration `017`) · VF-090 + VF-092 (ícones, `error.tsx`/`loading.tsx`) · VF-084 + VF-035 (consulta da igreja e tipos gerados, depois do VF-101) | Em paralelo |
+| 2 · médios, leva 3 | VF-085, VF-086, VF-091, VF-104 (auth e admin, depois da sessão E) | Em sequência (mesmos arquivos) |
+| 2 · com o usuário | VF-010 (cadastro público), VF-087 (CLI e histórico de migrations), VF-089 (backup), VF-098 (Docker para o Supabase local) | |
 | 3 · baixos | VF-012, VF-094, VF-096 (banco); VF-031, VF-032, VF-095, VF-097, VF-037, VF-033, VF-034, VF-039 | |
 | 4 · funcionalidades | VF-020, VF-022, VF-023, VF-024 → VF-021, VF-027 → VF-025, VF-026 | VF-021 depois de VF-083, VF-088 e VF-093; VF-025/026 dependem do VF-003 |
 
@@ -53,8 +50,8 @@ Prioridade sugerida, da mais urgente para a menos urgente. A decisão final é d
 | Severidade | Itens |
 |-----------|-------|
 | **Crítico** | _Nenhum._ O VF-080 foi concluído em 30/10. |
-| **Alto** | VF-011 (editor altera identidade da igreja e clero via API) · VF-030 (falha do Supabase vira 404 em cache) |
-| **Médio** | VF-081 (cabeçalhos de segurança) · VF-082 (papel padrão `editor`) · VF-083 (validação nas Server Actions) · VF-013 (editor desativado entra) · VF-010 (cadastro público) · VF-084 (5 consultas e render duplicado na página da igreja) · VF-085 (AuthProvider carrega em dobro) · VF-086 (middleware consulta o Auth a cada requisição) · VF-087 (migrations sem histórico) · VF-088 (integridade no banco antes dos formulários) · VF-089 (backup e pausa do plano gratuito) · VF-090 (favicon de 1 MB) · VF-091 (admin acessa o banco direto) · VF-092 (sem `error.tsx`/`loading.tsx`) · VF-093 (auditoria de alterações) · VF-035 (tipos gerados) · VF-036 (testes e CI) |
+| **Alto** | _Nenhum._ VF-011 e VF-030 concluídos em 31/10. |
+| **Médio** | VF-081 (cabeçalhos de segurança) · VF-082 (papel padrão `editor`) · VF-083 (validação nas Server Actions) · VF-013 (editor desativado entra) · VF-010 (cadastro público) · VF-084 (5 consultas e render duplicado na página da igreja) · VF-085 (AuthProvider carrega em dobro) · VF-086 (middleware consulta o Auth a cada requisição) · VF-087 (migrations sem histórico) · VF-088 (integridade no banco antes dos formulários) · VF-089 (backup e pausa do plano gratuito) · VF-090 (favicon de 1 MB) · VF-091 (admin acessa o banco direto) · VF-092 (sem `error.tsx`/`loading.tsx`) · VF-093 (auditoria de alterações) · VF-035 (tipos gerados) |
 | **Baixo** | VF-012 · VF-094 · VF-095 · VF-096 · VF-097 · VF-031 · VF-032 · VF-037 |
 
 Pontos fortes confirmados na avaliação, a manter:
@@ -83,7 +80,6 @@ Pontos fortes confirmados na avaliação, a manter:
 - [ ] **VF-082 · Papel padrão do perfil é `editor`** · **médio** — `profiles.role` tem default `'editor'` e `is_active` default `true`. Todo usuário criado no Auth, por qualquer caminho, vira editor ativo. Hoje não ganha acesso a nenhuma igreja, mas fere o menor privilégio. Criar o perfil sem permissão (ex.: `is_active = false`) e deixar `createEditor`/`bootstrap-users` ativarem. Relacionado ao VF-010. Origem: `avaliação` · `001_profiles.sql`, `009_profiles_auth_insert_policies.sql`.
 - [ ] **VF-083 · Validação de entrada nas Server Actions de admin** · **médio** — não há schema de validação (formato de email, tamanho de nome e senha, UUIDs em `churchIds`/`editorId`). `toggleEditorActive` aceita o ID de um admin, inclusive o próprio, o que permite se trancar fora do painel. `updateEditorChurches` aceita o ID de um admin. Validar com schema (ex.: zod) e restringir o alvo a `role = 'editor'`. Origem: `avaliação` · `features/auth/admin-actions.ts`.
 - [ ] **VF-010 · Confirmar que o cadastro público está desativado** · **médio** no Supabase (Authentication → Providers). O app não tem tela de cadastro, e com o VF-082 em aberto qualquer cadastro vira editor ativo. Origem: `doc`.
-- [ ] **VF-011 · Ajustar o RLS às permissões do editor** (D3) · **alto**. O risco já existe hoje: mesmo sem formulários, um editor com login pode chamar a API REST do Supabase direto. Hoje `churches_update_editor` libera qualquer coluna de `churches` (inclusive `slug` e `name`), e as políticas `church_clergy_*_editor` deixam o editor mexer nos vínculos do clero. Pela decisão, identidade da igreja e clero ficam só com o admin. Origem: `decisão` · `supabase/migrations/008_rls_policies.sql`.
 - [ ] **VF-012 · `search_path` e permissão de execução das funções `is_admin()` e `is_editor_of()`** · **baixo** — são `security definer` sem `set search_path` (o Supabase recomenda fixar) e ficam expostas para `anon` em `/rest/v1/rpc/*` (respondem `false`, conferido em 30/10). Fixar o `search_path` e revogar `execute` de `anon`. Origem: `análise` + `avaliação` · `008_rls_policies.sql`.
 - [ ] **VF-013 · Editor desativado ainda consegue entrar** · **médio** — o `login` não checa `is_active`, e o `canEditChurch` do `AuthProvider` também não, então o lápis aparece. A escrita já é barrada pelo RLS. Origem: `análise` · `features/auth/actions.ts`, `features/auth/auth-provider.tsx`.
 
@@ -105,7 +101,6 @@ Pontos fortes confirmados na avaliação, a manter:
 
 ### Qualidade e confiabilidade
 
-- [ ] **VF-030 · Página da igreja dá 404 quando o Supabase falha** · **alto** — `getChurchBySlug` retorna `null` em qualquer erro, inclusive com o projeto pausado ou fora do ar, e a página chama `notFound()`. Com ISR, uma falha durante a revalidação pode trocar a página de uma igreja que existe por um 404 em cache (visitantes e buscadores). Já a home lança o erro e o Next mantém a versão anterior, então o comportamento é inconsistente. Os erros das 4 consultas paralelas (horários, atividades, clero, ministérios) são ignorados e as seções somem sem aviso. Distinguir "não encontrado" (`PGRST116`) de erro e lançar o erro. Origem: `análise` + `avaliação` · `lib/supabase/queries/churches.ts`.
 - [ ] **VF-084 · Página da igreja: 5 consultas e render duplicado** · **médio** — `getChurchBySlug` faz 1 consulta e depois mais 4 em paralelo (2 idas ao banco), e é chamada por `generateMetadata` e pela página sem `cache()` do React, que garantiria uma única execução por requisição. Consolidar em uma consulta aninhada do PostgREST (`churches?select=*,schedule_events(*),activities(*,activity_schedules(*)),church_clergy(*,clergy(*)),church_ministries(ministries(*))`) e envolver com `cache()`. Origem: `avaliação` · `lib/supabase/queries/churches.ts`, `app/igreja/[slug]/page.tsx`.
 - [ ] **VF-085 · `AuthProvider` carrega o usuário em dobro** · **médio**:
   - na montagem, `loadUser()` roda direto e de novo no evento `INITIAL_SESSION` do `onAuthStateChange` (perfil e vínculos buscados duas vezes, com corrida de estado), e repete a cada `TOKEN_REFRESHED`;
@@ -137,7 +132,6 @@ Pontos fortes confirmados na avaliação, a manter:
 - [ ] **VF-033 · Sitemap e robots** — o README promete "Sitemap automático", mas não existem `app/sitemap.ts` nem `app/robots.ts`. Origem: `análise`.
 - [ ] **VF-034 · Extrair o bloco de logo e marca** compartilhado entre `PageHeader` e `AdminHeader`. Origem: `doc`.
 - [ ] **VF-035 · Tipos gerados do banco** (`supabase gen types`) · **médio** — o cliente Supabase não é tipado, então `data` chega como `any`; hoje as linhas são descritas por interfaces `Db*` escritas à mão, e o mapeamento de igreja está duplicado em `getChurches` e `getChurchBySlug`. Origem: `análise` · `lib/supabase/queries/`.
-- [ ] **VF-036 · Testes automatizados e CI** · **médio** — não há testes nem workflow. Sugestão inicial: testes unitários de `lib/utils` (horários, clero, contato) e um GitHub Actions com `lint` + `tsc` + `build`. **Habilita o TDD e as camadas de unitários, integração e e2e do agente `tester`** (hoje ele só roda tipos, lint e build). Stack definida na D9: Vitest + Testing Library e Playwright, com scripts `test:unit`, `test:integration` e `test:e2e`. Banco definido na D10: Supabase local via Docker para testes que gravam dados. Era a próxima demanda; a avaliação de 30/10 sugeriu fazer o VF-080 (crítico) antes, e ele foi concluído em 30/10. Origem: `análise` + `decisão`.
 - [ ] **VF-037 · Seed idempotente** · **baixo** — `npm run seed` usa `insert`; rodar duas vezes gera erros de slug duplicado e dados parciais. Origem: `análise` · `scripts/seed.ts`.
 - [ ] **VF-038 · Avaliar tipos de coluna para datas e horários** — `time`, `end_time` e as datas do clero são `text`. Hoje é intencional para aceitar só o ano. Reavaliar se surgir necessidade de ordenar ou filtrar por data. Origem: `análise`.
 - [ ] **VF-039 · Migrar `next lint` para o ESLint CLI** — `next lint` está obsoleto e foi removido no Next 16. Hoje ele só verifica as pastas padrão (`app`, `components`, `lib`, `pages`, `src`): `features/` e `tests/` ficam de fora. Origem: `análise`.
@@ -161,7 +155,6 @@ Pontos fortes confirmados na avaliação, a manter:
 
 - [ ] **VF-060 · Node local na versão 24** — a máquina local roda Node 22; `engines` e `.nvmrc` pedem 24.x. Origem: `análise`.
 - [ ] **VF-061 · `package-lock.json` solto na pasta home** (`~/package-lock.json`) — faz o Next inferir a raiz errada do workspace (aviso no lint e no build). Origem: `análise`.
-- [ ] **VF-062 · Destino do `.github/copilot-instructions.md`** — desatualizado (ainda fala em dados estáticos e escopo só de MVP) e fora do Git, porque `.github` está no `.gitignore`. Decidir: remover, atualizar ou deixar. Atenção: esse `.gitignore` também bloqueia futuros workflows de CI (VF-036). Origem: `análise`.
 - [ ] **VF-064 · Portar comandos e agentes do Cursor para o Claude Code** — `reviewer`, `qa-tester` e `verifier` já viraram os agentes `reviewer` e `tester` (VF-004). Faltam `.cursor/commands` (commit, create-pr, qa, add-church, build-check…), o agente `data-auditor` e as `.cursor/skills`. Origem: `análise`.
 
 ---
@@ -202,6 +195,11 @@ Pontos fortes confirmados na avaliação, a manter:
 
 ### Outubro/2026
 
+- [x] **VF-036** · Testes automatizados e CI: Vitest (unitários e integração) e Playwright (e2e só de leitura), workflow no GitHub Actions com Node 24 — PR #26 (31/10)
+- [x] **VF-062** · `.github` versionado; só `.github/copilot-instructions.md` continua no `.gitignore` (D13) — PR #26 (31/10)
+- [x] **VF-030** · Erro do Supabase lança em vez de virar 404 em cache; `.maybeSingle()` e `findQueryError()` nas consultas paralelas — PR #24 (31/10)
+- [x] **VF-011** · RLS do editor conforme a D3/D11: trigger com lista de colunas permitidas em `churches` e editor sem escrita em `church_clergy` (migration `014`, aplicada e verificada no SQL Editor em 31/10) — PR #25 (31/10)
+- [x] Orquestração por fases, decisões D11 a D15 e itens vindos da Fase 1 — PR #23 (31/10)
 - [x] **VF-080** · Next.js 15.5.9 → 15.5.28 e `npm audit` zerado (produção e dev): `npm audit fix` (sharp 0.35, postcss, ws, nanoid, picomatch, source-map-js…), `overrides` para o Next usar `postcss` ≥ 8.5.23, `tsx` 4.23 (esbuild 0.28) e remoção do bloco `images` (`dangerouslyAllowSVG`) do `next.config.ts` — PR #22 (30/10)
 - [x] **VF-004** · Fluxo implementar → revisar → testar: agentes `reviewer` e `tester`, regra `dev-workflow.md` e `APRENDIZADOS.md` — PR #20 (30/10)
 - [x] **VF-002** · Projeto preparado para o Claude Code: `.claude/CLAUDE.md`, regras, docs em `.claude/docs/` e este board — PR #19 (30/10)
