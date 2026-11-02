@@ -62,7 +62,7 @@ npm run test:e2e          # smoke das páginas públicas (Playwright, Chromium, 
 | CT-013 | `features/auth/auth-provider.integration.test.tsx`, `features/auth/access.test.ts` | `canEditChurch` só para perfil ativo; perfil desativado tem a sessão encerrada no `AuthProvider` |
 | 404 | `tests/e2e/public-pages.spec.ts` | `/igreja/nao-existe` responde 404 com "Igreja não encontrada" |
 
-Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getChurchBySlug`, `getAllClergyWithChurch`) têm testes em `lib/supabase/queries/*.integration.test.ts`, e `findQueryError` em `lib/supabase/queries/query-error.test.ts`. Seguem manuais: responsividade (CT-008, CT-014), dark mode, SEO completo (CT-009), links externos reais e os fluxos logados.
+Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getChurchBySlug`, `getAllClergyWithChurch`) e o `toChurch` têm testes em `lib/supabase/queries/*.integration.test.ts`, inclusive a forma da consulta aninhada de `getChurchBySlug` (uma consulta, relações embutidas e ordem explícita). Seguem manuais: responsividade (CT-008, CT-014), dark mode, SEO completo (CT-009), links externos reais e os fluxos logados.
 
 ---
 
