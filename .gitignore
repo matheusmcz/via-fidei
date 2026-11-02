@@ -41,6 +41,7 @@ next-env.d.ts
 
 # copilot (desatualizado, fora do Git; VF-062)
 .github/copilot-instructions.md
+.github/agents/
 
 # claude code (configurações pessoais)
 .claude/settings.local.json
