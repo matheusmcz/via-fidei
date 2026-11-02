@@ -29,6 +29,7 @@ A resolução de URL e chave pública está centralizada em [`lib/supabase/env.t
 | `church_ministries` | Vínculo ministério-igreja |
 | `profiles` | Perfis de usuários (admin/editor) |
 | `editor_churches` | Vínculo editor-igreja |
+| `audit_log` | Auditoria das alterações nas tabelas acima (`017`): quem, o quê e quando. Só inserção, pelo trigger; leitura só do admin |
 
 ### Migrations
 
@@ -41,6 +42,8 @@ O script `scripts/seed.ts` migra os dados dos arquivos estáticos legados para o
 ```bash
 npm run seed
 ```
+
+Desde a `017`, o seed e o `bootstrap-users` deixam registros em `audit_log` sem autor: com role `service_role` (gravações do script) ou `supabase_auth_admin` (perfil criado pelo cadastro no Auth). Upsert com os mesmos valores não gera registro de `UPDATE`.
 
 ## Arquivos estáticos (legado)
 
