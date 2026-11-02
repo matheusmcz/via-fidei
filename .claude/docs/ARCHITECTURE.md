@@ -212,6 +212,8 @@ Código auxiliar reutilizável.
   - `canGroupWeekdays()` - Verifica se pode agrupar dias úteis
   - `formatRecurrence()` - Label de recorrência ("1ª Sexta-feira do mês")
   - `isValidTime()` - Valida `HH:MM` com dois dígitos (00:00–23:59); mesma regra do CHECK `is_valid_schedule_time()` da `016`
+  - `isScheduleTimeOrderValid()` - Término depois do início (`end_time > time`, estrito); mesma regra do CHECK `is_schedule_time_order_valid()` da `018`
+  - `validateScheduleTimes()` / `SCHEDULE_TIME_MESSAGES` - Lista de problemas (`{ field, reason }`) e mensagens por motivo, para os formulários (VF-021)
   - `getEventKey()` - Gera chave única para React
 - `clergy.ts` - Utilitários de clero:
   - `getRoleLabel()` - Traduz role para português ("Pároco", "Vigário")
@@ -232,6 +234,12 @@ Código auxiliar reutilizável.
   - `sortClergyByName()` - Ordena alfabeticamente por nome
   - `getClergyInitials()` - Letras iniciais únicas dos nomes
   - `filterClergyByInitial()` - Filtra por letra inicial (ignora acentos)
+- `clergy-dates.ts` - Ordem e "não futura" das datas do clero (VF-105; ver [Formatos e ordem](#formatos-e-ordem-de-horário-e-data-vf-088-vf-105)):
+  - `compareClergyDates()` - Compara na menor precisão comum (`YYYY` × `YYYY-MM-DD` compara só o ano)
+  - `isClergyDateOrderValid()` - Data posterior ≥ anterior; mesma regra do CHECK `is_clergy_date_order_valid()` da `018`
+  - `isClergyDateNotFuture()` - Data ≤ hoje (recebe hoje por parâmetro); mesma regra de `is_clergy_date_not_future()` da `018`
+  - `getTodayInMaceio()` - Dia de hoje em `America/Maceio` (`YYYY-MM-DD`)
+  - `validateClergyVitalDates()` / `validateClergyTenureDates()` / `CLERGY_DATE_MESSAGES` - Lista de problemas (`{ field, reason }`) e mensagens por motivo, para os formulários (VF-021)
 - `contact.ts` - Utilitários de contato:
   - `formatPhoneForDisplay()` - Formata telefone ("(82) 99999-9999")
   - `formatPhoneForHref()` - Telefone para href (apenas dígitos)
@@ -307,6 +315,7 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `014_rls_permissoes_editor.sql` - Alinha o RLS à D3: trigger `BEFORE UPDATE` em `churches` que só deixa o editor alterar contato, foto e link do Maps; remove as políticas de escrita do editor em `church_clergy`
 - `015_perfil_inicial_sem_permissao.sql` - Perfil novo nasce sem permissão (VF-082): default de `profiles.is_active` passa a `false` e `handle_new_user()` grava `role = 'editor'` e `is_active = false` explicitamente. Não altera perfis existentes
 - `016_integridade_formatos.sql` - VF-088: funções `is_valid_schedule_time(text)` e `is_valid_clergy_date(text)` e CHECKs de formato em `time`/`end_time` (`schedule_events`, `activity_schedules`), `birth_date`/`death_date` (`clergy`) e `start_date`/`end_date` (`church_clergy`), criados `not valid` e validados no fim; troca o `unique (church_id, clergy_id, start_date)` da `005` pelo índice único `church_clergy_church_clergy_start_key` com `nulls not distinct` (Postgres 15+). Roteiros: `016_integridade_formatos_pre_verificacao.sql` (antes) e `016_integridade_formatos_verificacao.sql` (depois)
+- `018_ordem_e_datas_futuras.sql` - VF-105 (D16, D17): CHECKs de ordem `church_clergy_dates_order_check` (`end_date ≥ start_date`), `clergy_vital_dates_order_check` (`death_date ≥ birth_date`), `schedule_events_time_order_check` e `activity_schedules_time_order_check` (`end_time > time`), com as funções imutáveis `is_clergy_date_order_valid(text, text)` e `is_schedule_time_order_valid(text, text)`, criados `not valid` e validados no fim; triggers `BEFORE INSERT OR UPDATE` `clergy_dates_not_future` e `church_clergy_dates_not_future` (função `enforce_clergy_dates_not_future()`, com `is_clergy_date_not_future(text, text)` e `clergy_today_in_maceio()`), que recusam data futura só nas colunas que mudaram. Depende da `016`. Roteiros: `018_ordem_e_datas_futuras_pre_verificacao.sql` (antes) e `018_ordem_e_datas_futuras_verificacao.sql` (depois)
 
 Roteiros de verificação manual ficam em `supabase/tests/` (ex.: `014_rls_permissoes_editor_verificacao.sql`), para rodar no SQL Editor dentro de `begin … rollback`.
 
@@ -488,16 +497,27 @@ Horários é a informação principal da página: a ausência também informa o 
 - A `bio` descreve a pessoa (formação, ministério, cargos). Vínculos com igrejas ficam em `church_clergy`, não na bio.
 - Um vínculo (`church_clergy`) é único por igreja, clérigo e `start_date`, contando `start_date` nulo como valor (`016`). A regra da D1 (no máximo um vínculo **ativo** por clérigo) ainda não está no banco: fica para o VF-025.
 
-### Formatos de horário e data (VF-088)
+### Formatos e ordem de horário e data (VF-088, VF-105)
 
-As colunas são `text` de propósito (VF-038). O banco aplica o formato por CHECK (`016`) com a mesma regra das funções puras de `lib/utils`, testadas com os mesmos casos de borda:
+As colunas são `text` de propósito (VF-038). O banco aplica as regras com a mesma lógica das funções puras de `lib/utils`, testadas com os mesmos casos de borda (unitários e roteiros de `supabase/tests/`):
 
 | Colunas | Regra | TypeScript | SQL |
 |---------|-------|------------|-----|
-| `time`, `end_time` de `schedule_events` e `activity_schedules` | `HH:MM` com dois dígitos, 00:00–23:59, sem espaços (`7:30` e `24:00` são recusados) | `isValidTime()` | `is_valid_schedule_time()` |
-| `birth_date`, `death_date` de `clergy`; `start_date`, `end_date` de `church_clergy` | `YYYY` (0001–9999) ou `YYYY-MM-DD` real (sem `YYYY-MM`, sem `0000`, sem `2024-02-30`, sem espaços) | `isValidClergyDate()` | `is_valid_clergy_date()` |
+| `time`, `end_time` de `schedule_events` e `activity_schedules` | Formato `HH:MM` com dois dígitos, 00:00–23:59, sem espaços (`7:30` e `24:00` são recusados) | `isValidTime()` | `is_valid_schedule_time()` · CHECK (`016`) |
+| `birth_date`, `death_date` de `clergy`; `start_date`, `end_date` de `church_clergy` | Formato `YYYY` (0001–9999) ou `YYYY-MM-DD` real (sem `YYYY-MM`, sem `0000`, sem `2024-02-30`, sem espaços) | `isValidClergyDate()` | `is_valid_clergy_date()` · CHECK (`016`) |
+| `end_time` × `time` (D16) | Término **depois** do início, estrito: `07:00` às `07:00` é recusado, e `22:00` às `01:00` (atravessa a meia-noite) também, **por ora**: a recusa de horário que vira o dia é provisória, até decisão do domínio (pergunta em aberto do VF-105) | `isScheduleTimeOrderValid()` | `is_schedule_time_order_valid()` · CHECK (`018`) |
+| `end_date` × `start_date`; `death_date` × `birth_date` (D16) | Posterior ≥ anterior, na **menor precisão comum** (ver abaixo) | `isClergyDateOrderValid()` | `is_clergy_date_order_valid()` · CHECK (`018`) |
+| As quatro datas do clero (D17) | Não futura: data completa ≤ hoje; ano sozinho ≤ ano atual. Hoje é o dia em `America/Maceio` | `isClergyDateNotFuture()` + `getTodayInMaceio()` | `is_clergy_date_not_future()` + `clergy_today_in_maceio()` · trigger `BEFORE` (`018`) |
 
-Nulo continua permitido onde a coluna aceita nulo (`end_time` e as datas). Os formulários (VF-021) devem aparar espaços e completar a hora com zero (`7:30` → `07:30`) antes de gravar. Mudou a regra: alterar a função TS, a função SQL (nova migration), os testes unitários e o roteiro de verificação juntos.
+**Datas com precisões diferentes.** Se um dos lados tem só o ano, compara-se só o ano; com os dois completos, compara-se o dia. Exemplos: início `2020` e fim `2020-05-01`, válido; início `2021` e fim `2020-12-31`, inválido; o mesmo ano dos dois lados é sempre válido. Igualdade é aceita nas datas (`fim = início`), não nos horários.
+
+**Funções de ordem não opinam** quando falta um dos lados ou um deles está fora do formato: devolvem `true`, e o formato fica com a regra própria. Assim cada erro aparece uma vez, com o motivo certo.
+
+**"Não futura" é trigger, não CHECK:** depende de `now()`, e um CHECK tem de dar sempre o mesmo resultado (é reavaliado no `validate`, na restauração e no `pg_upgrade`). O trigger só avalia as colunas que mudaram (insert, ou update com valor diferente do antigo), para não travar a edição de outras colunas numa linha antiga; vale para qualquer papel, inclusive `service_role` e seed. O erro tem código `check_violation` (23514) e o nome `<tabela>_<coluna>_not_future` (ex.: `clergy_birth_date_not_future`). O PostgREST não repassa o `constraint_name`, então o nome vai também no DETAIL: no supabase-js, o app o lê em `error.details`. Nos CHECKs, o nome vem dentro de `error.message` (`violates check constraint "…"`).
+
+**Formulários (VF-021).** `validateScheduleTimes()`, `validateClergyVitalDates()` e `validateClergyTenureDates()` devolvem a lista de problemas (`{ field, reason }`); o texto de cada motivo está em `SCHEDULE_TIME_MESSAGES` e `CLERGY_DATE_MESSAGES`. O erro de ordem fica no campo posterior (término, falecimento, fim). Campo vazio deve ser gravado como `null`: texto vazio é erro de formato, como no banco. Os formulários também devem aparar espaços e completar a hora com zero (`7:30` → `07:30`) antes de validar.
+
+Nulo continua permitido onde a coluna aceita nulo (`end_time` e as datas). Mudou a regra: alterar a função TS, a função SQL (nova migration), a cópia da regra na pré-verificação, os testes unitários e o roteiro de verificação juntos.
 
 ### Abrangência
 

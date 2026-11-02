@@ -36,7 +36,10 @@ paths:
 - Horários no formato `HH:MM` com dois dígitos, 00:00–23:59 (validar com `isValidTime()`; o banco aplica a mesma regra por CHECK desde a `016`).
 - Dias da semana como `DayOfWeek` (0 = domingo, 6 = sábado).
 - Datas do clero (`birth_date`, `death_date`, `start_date`, `end_date`) são texto: ano (`YYYY`) ou data completa e real (`YYYY-MM-DD`). Validar com `isValidClergyDate()`; o banco aplica a mesma regra por CHECK desde a `016`.
-- Regra de formato nova ou alterada: função pura em `lib/utils` + CHECK com a mesma regra em migration, com os mesmos casos de borda no teste unitário e no roteiro de verificação.
+- Ordem (D16, CHECK desde a `018`): término depois do início nos horários (`end_time > time`, estrito; `isScheduleTimeOrderValid()`); fim do vínculo ≥ início e falecimento ≥ nascimento (`isClergyDateOrderValid()`). Datas de precisões diferentes comparam na menor precisão comum: com só o ano em um dos lados, compara-se só o ano.
+- Datas do clero não podem ser futuras (D17): data completa ≤ hoje e ano sozinho ≤ ano atual, com hoje em `America/Maceio` (`isClergyDateNotFuture()` + `getTodayInMaceio()`). No banco é trigger `BEFORE` (`018`), não CHECK, porque depende de `now()`; ele só avalia as colunas que mudaram.
+- Formulários validam com `validateScheduleTimes()`, `validateClergyVitalDates()` e `validateClergyTenureDates()`, com as mensagens de `SCHEDULE_TIME_MESSAGES` e `CLERGY_DATE_MESSAGES`, e gravam campo vazio como `null`.
+- Regra nova ou alterada: função pura em `lib/utils` + a mesma regra no banco (CHECK com função `immutable`; trigger `BEFORE` quando depender de `now()`), com `set search_path` explícito e os mesmos casos de borda no teste unitário e no roteiro de verificação. Roteiro de verificação que grava data deve usar data passada.
 
 ## Regras de domínio do clero
 
