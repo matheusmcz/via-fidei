@@ -30,10 +30,8 @@ export const metadata: Metadata = {
     "missas",
   ],
   authors: [{ name: "Via Fidei" }],
-  icons: {
-    icon: "/images/via-fidei-logo.png",
-    apple: "/images/via-fidei-logo.png",
-  },
+  // Favicon e ícone Apple vêm de `app/icon.png` e `app/apple-icon.png`
+  // (convenção de arquivos do App Router, VF-090).
   openGraph: {
     type: "website",
     locale: "pt_BR",
