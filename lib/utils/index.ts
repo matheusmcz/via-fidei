@@ -20,6 +20,16 @@ export {
   sortClergyByRole,
   sortClergyByStartDate,
 } from "./clergy";
+export {
+  CLERGY_DATE_MESSAGES,
+  CLERGY_TIME_ZONE,
+  compareClergyDates,
+  getTodayInMaceio,
+  isClergyDateNotFuture,
+  isClergyDateOrderValid,
+  validateClergyTenureDates,
+  validateClergyVitalDates,
+} from "./clergy-dates";
 export { cn } from "./cn";
 export {
   formatFacebookName,
@@ -41,6 +51,9 @@ export {
   getEventKey,
   getOrderedDays,
   groupByDay,
+  isScheduleTimeOrderValid,
   isValidTime,
+  SCHEDULE_TIME_MESSAGES,
+  validateScheduleTimes,
 } from "./schedule";
 export { slugify } from "./slugify";

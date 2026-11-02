@@ -6,6 +6,9 @@ export type {
   ChurchMinistry,
   ChurchType,
   Clergy,
+  ClergyDateField,
+  ClergyDateIssue,
+  ClergyDateIssueReason,
   ClergyHonor,
   ClergyRole,
   ClergyTitle,
@@ -14,4 +17,7 @@ export type {
   RecurrenceType,
   ReligiousOrderSuffix,
   ScheduleEvent,
+  ScheduleTimeField,
+  ScheduleTimeIssue,
+  ScheduleTimeIssueReason,
 } from "./church";

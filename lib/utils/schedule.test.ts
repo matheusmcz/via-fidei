@@ -10,7 +10,10 @@ import {
   getEventKey,
   getOrderedDays,
   groupByDay,
+  isScheduleTimeOrderValid,
   isValidTime,
+  SCHEDULE_TIME_MESSAGES,
+  validateScheduleTimes,
 } from "./schedule";
 
 describe("getDayName / getDayNameShort", () => {
@@ -57,6 +60,76 @@ describe("isValidTime", () => {
     "٠٧:٠٠",
   ])("rejeita %j", (time) => {
     expect(isValidTime(time)).toBe(false);
+  });
+});
+
+// Mesma regra do CHECK `is_schedule_time_order_valid()` da migration 018. Os
+// casos se repetem em `supabase/tests/018_ordem_e_datas_futuras_verificacao.sql`.
+describe("isScheduleTimeOrderValid", () => {
+  it.each<[string, string]>([
+    ["07:00", "07:01"],
+    ["06:30", "17:30"],
+    ["00:00", "23:59"],
+    ["09:59", "10:00"],
+    ["19:00", "20:30"],
+  ])("aceita %s às %s", (time, endTime) => {
+    expect(isScheduleTimeOrderValid(time, endTime)).toBe(true);
+  });
+
+  it.each<[string, string]>([
+    ["07:00", "07:00"],
+    ["18:00", "17:59"],
+    ["23:59", "00:00"],
+    // Atravessar a meia-noite fica recusado até decisão do domínio.
+    ["22:00", "01:00"],
+    ["10:00", "09:59"],
+  ])("recusa %s às %s", (time, endTime) => {
+    expect(isScheduleTimeOrderValid(time, endTime)).toBe(false);
+  });
+
+  it("aceita término ausente", () => {
+    expect(isScheduleTimeOrderValid("07:00", null)).toBe(true);
+    expect(isScheduleTimeOrderValid("07:00", undefined)).toBe(true);
+    expect(isScheduleTimeOrderValid(null, "07:00")).toBe(true);
+  });
+
+  it("não opina com formato inválido (o formato tem regra própria)", () => {
+    expect(isScheduleTimeOrderValid("7:30", "07:00")).toBe(true);
+    expect(isScheduleTimeOrderValid("18:00", "24:00")).toBe(true);
+    expect(isScheduleTimeOrderValid("18:00", "")).toBe(true);
+  });
+});
+
+describe("validateScheduleTimes", () => {
+  it("sem problemas com horários válidos ou sem término", () => {
+    expect(validateScheduleTimes({ time: "07:00" })).toEqual([]);
+    expect(validateScheduleTimes({ time: "06:30", endTime: "17:30" })).toEqual([]);
+    expect(validateScheduleTimes({ time: "06:30", endTime: null })).toEqual([]);
+  });
+
+  it("aponta formato inválido em cada campo", () => {
+    expect(validateScheduleTimes({ time: "7:30", endTime: "24:00" })).toEqual([
+      { field: "time", reason: "format" },
+      { field: "endTime", reason: "format" },
+    ]);
+    expect(validateScheduleTimes({ time: "07:00", endTime: "" })).toEqual([
+      { field: "endTime", reason: "format" },
+    ]);
+  });
+
+  it("aponta término igual ou antes do início no campo de término", () => {
+    expect(validateScheduleTimes({ time: "18:00", endTime: "18:00" })).toEqual([
+      { field: "endTime", reason: "end-not-after-start" },
+    ]);
+    expect(validateScheduleTimes({ time: "22:00", endTime: "01:00" })).toEqual([
+      { field: "endTime", reason: "end-not-after-start" },
+    ]);
+  });
+
+  it("tem mensagem em português para cada motivo", () => {
+    expect(Object.keys(SCHEDULE_TIME_MESSAGES).sort()).toEqual(
+      ["end-not-after-start", "format"].sort(),
+    );
   });
 });
 
