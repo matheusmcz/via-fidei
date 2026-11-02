@@ -7,9 +7,30 @@ import {
   type FakeQueryResult,
 } from "@/tests/fixtures/supabase";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getChurchBySlug, getChurches, getChurchSlugs } from "./churches";
+import {
+  getChurchBySlug,
+  getChurches,
+  getChurchSlugs,
+  toChurch,
+  type DbChurch,
+} from "./churches";
 
 vi.mock("@/lib/supabase/public", () => ({ createPublicClient: vi.fn() }));
+
+// Registra as funções que passam pelo `cache()` do React, mantendo o `cache`
+// real, para conferir que `getChurchBySlug` sai dele.
+const cachedFunctions = vi.hoisted(() => new Set<unknown>());
+vi.mock("react", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react")>();
+  return {
+    ...actual,
+    cache: <T extends (...args: never[]) => unknown>(fn: T): T => {
+      const cached = actual.cache(fn);
+      cachedFunctions.add(cached);
+      return cached;
+    },
+  };
+});
 
 function mockChurchesTable(result: FakeQueryResult) {
   return mockPublicClient({ churches: result });
@@ -117,9 +138,8 @@ describe("getChurchSlugs (query)", () => {
 // --- getChurchBySlug ---------------------------------------------------------
 //
 // Os testes de comportamento olham só o que a função devolve ou lança (o
-// `Church`, o `null` e os erros), sem depender de quantas consultas são feitas:
-// o VF-084 vai consolidar tudo em uma consulta aninhada. Os filtros ficam no
-// `describe` próprio, mais abaixo, para serem ajustados nessa refatoração.
+// `Church`, o `null` e os erros). A forma da consulta (uma só, em `churches`,
+// com as relações embutidas, VF-084) fica no `describe` próprio, mais abaixo.
 
 const SLUG = "sao-paulo-apostolo";
 // Id diferente do slug, para o filtro por `church_id` não passar por acaso.
@@ -269,36 +289,49 @@ const churchMinistryRows = [
   },
 ];
 
-type ChurchTable =
-  | "churches"
+function ok(data: unknown): FakeQueryResult {
+  return { data, error: null };
+}
+
+type EmbeddedRelation =
   | "schedule_events"
   | "activities"
   | "church_clergy"
   | "church_ministries";
 
-function ok(data: unknown): FakeQueryResult {
-  return { data, error: null };
-}
+type ChurchPageOverrides = Partial<Record<EmbeddedRelation, unknown>> &
+  Record<string, unknown>;
 
-/** Igreja encontrada e todas as seções preenchidas; sobrescreva por tabela. */
-function mockChurchPage(
-  overrides: Partial<Record<ChurchTable, FakeQueryResponse>> = {},
-) {
-  return mockPublicClient({
-    churches: ok(churchRow),
-    schedule_events: ok(scheduleEventRows),
-    activities: ok(activityRows),
-    church_clergy: ok(churchClergyRows),
-    church_ministries: ok(churchMinistryRows),
+/**
+ * Linha de `churches` como o PostgREST devolve a consulta aninhada: a igreja
+ * com as relações embutidas, todas preenchidas. Sobrescreva coluna ou relação.
+ */
+function churchPageRow(overrides: ChurchPageOverrides = {}) {
+  return {
+    ...churchRow,
+    schedule_events: scheduleEventRows,
+    activities: activityRows,
+    church_clergy: churchClergyRows,
+    church_ministries: churchMinistryRows,
     ...overrides,
-  });
+  };
 }
 
-const RELATED_TABLES = [
-  { table: "schedule_events", section: "horários" },
-  { table: "activities", section: "atividades" },
-  { table: "church_clergy", section: "clero" },
-  { table: "church_ministries", section: "ministérios" },
+/** Igreja encontrada com todas as seções preenchidas. */
+function mockChurchPage(overrides: ChurchPageOverrides = {}) {
+  return mockPublicClient({ churches: ok(churchPageRow(overrides)) });
+}
+
+/** Resposta crua da consulta da página (erro, rejeição, nenhuma linha). */
+function mockChurchPageResponse(response: FakeQueryResponse) {
+  return mockPublicClient({ churches: response });
+}
+
+const EMBEDDED_RELATIONS = [
+  { relation: "schedule_events", section: "horários" },
+  { relation: "activities", section: "atividades" },
+  { relation: "church_clergy", section: "clero" },
+  { relation: "church_ministries", section: "ministérios" },
 ] as const;
 
 describe("getChurchBySlug (query)", () => {
@@ -308,15 +341,16 @@ describe("getChurchBySlug (query)", () => {
 
   describe("igreja inexistente", () => {
     it("devolve null quando nenhuma igreja tem o slug", async () => {
-      mockChurchPage({ churches: ok(null) });
+      mockChurchPageResponse(ok(null));
       await expect(getChurchBySlug("nao-existe")).resolves.toBeNull();
     });
   });
 
   describe("erros", () => {
     it("lança o erro da consulta da igreja, sem devolver null", async () => {
-      mockChurchPage({
-        churches: { data: null, error: { message: "permission denied" } },
+      mockChurchPageResponse({
+        data: null,
+        error: { message: "permission denied" },
       });
       await expect(getChurchBySlug(SLUG)).rejects.toMatchObject({
         message: "permission denied",
@@ -326,11 +360,9 @@ describe("getChurchBySlug (query)", () => {
     // Documenta o caso real: sem `throwOnError`, o supabase-js captura o
     // `fetch` rejeitado e devolve a falha de rede em `error`.
     it("lança a falha de rede que o supabase-js devolve como `error`", async () => {
-      mockChurchPage({
-        churches: {
-          data: null,
-          error: { message: "TypeError: fetch failed" },
-        },
+      mockChurchPageResponse({
+        data: null,
+        error: { message: "TypeError: fetch failed" },
       });
       await expect(getChurchBySlug(SLUG)).rejects.toMatchObject({
         message: "TypeError: fetch failed",
@@ -338,48 +370,35 @@ describe("getChurchBySlug (query)", () => {
     });
 
     it("lança quando o fetch da consulta da igreja é rejeitado", async () => {
-      mockChurchPage({
-        churches: { reject: new TypeError("fetch failed") },
-      });
+      mockChurchPageResponse({ reject: new TypeError("fetch failed") });
       await expect(getChurchBySlug(SLUG)).rejects.toThrow("fetch failed");
     });
 
-    it.each(RELATED_TABLES)(
-      "lança o erro quando só a consulta de $section falha",
-      async ({ table, section }) => {
-        mockChurchPage({
-          [table]: { data: null, error: { message: `${section} indisponível` } },
-        });
-        await expect(getChurchBySlug(SLUG)).rejects.toMatchObject({
-          message: `${section} indisponível`,
-        });
-      },
-    );
-
-    it.each(RELATED_TABLES)(
-      "lança quando só o fetch de $section é rejeitado",
-      async ({ table }) => {
-        mockChurchPage({ [table]: { reject: new TypeError("fetch failed") } });
-        await expect(getChurchBySlug(SLUG)).rejects.toThrow("fetch failed");
-      },
-    );
+    // Com a consulta aninhada, a falta de permissão (GRANT) em uma tabela
+    // embutida é erro da consulta inteira, nunca seção vazia.
+    it("lança o erro de permissão de uma tabela embutida", async () => {
+      mockChurchPageResponse({
+        data: null,
+        error: { message: "permission denied for table church_clergy" },
+      });
+      await expect(getChurchBySlug(SLUG)).rejects.toMatchObject({
+        message: "permission denied for table church_clergy",
+      });
+    });
   });
 
   describe("caminho feliz", () => {
     it("monta a igreja completa a partir das linhas do banco", async () => {
       mockChurchPage({
-        churches: ok({
-          ...churchRow,
-          image_url: "https://img/igreja.jpg",
-          type: "parish",
-          phone: "+558233334444",
-          whatsapp: "+5582988887777",
-          email: "secretaria@paroquia.org",
-          instagram: "@avozdoapostolo",
-          facebook: "paroquiasaopaulo",
-          website: "https://paroquia.org",
-          google_maps_url: "https://maps.google.com/?q=1",
-        }),
+        image_url: "https://img/igreja.jpg",
+        type: "parish",
+        phone: "+558233334444",
+        whatsapp: "+5582988887777",
+        email: "secretaria@paroquia.org",
+        instagram: "@avozdoapostolo",
+        facebook: "paroquiasaopaulo",
+        website: "https://paroquia.org",
+        google_maps_url: "https://maps.google.com/?q=1",
       });
 
       await expect(getChurchBySlug(SLUG)).resolves.toEqual({
@@ -452,10 +471,10 @@ describe("getChurchBySlug (query)", () => {
 
     it("separa os horários por categoria e omite as categorias sem horário", async () => {
       mockChurchPage({
-        schedule_events: ok([
+        schedule_events: [
           { id: "e1", category: "confession", ...emptyScheduleColumns, time: "09:00" },
           { id: "e2", category: "confession", ...emptyScheduleColumns, time: "16:00" },
-        ]),
+        ],
       });
 
       const church = await getChurchBySlug(SLUG);
@@ -470,7 +489,7 @@ describe("getChurchBySlug (query)", () => {
     // não filtra por `is_active`: o vínculo encerrado também volta.
     it("mantém o vínculo encerrado com `endDate` e os dados opcionais do clérigo", async () => {
       mockChurchPage({
-        church_clergy: ok([
+        church_clergy: [
           {
             start_date: "2010",
             end_date: "2015",
@@ -490,7 +509,7 @@ describe("getChurchBySlug (query)", () => {
               facebook: "frei.antonio",
             },
           },
-        ]),
+        ],
       });
 
       const church = await getChurchBySlug(SLUG);
@@ -530,7 +549,7 @@ describe("getChurchBySlug (query)", () => {
 
     it("agrupa os ministérios por categoria e omite as categorias vazias", async () => {
       mockChurchPage({
-        church_ministries: ok([
+        church_ministries: [
           {
             ministries: {
               id: "m9",
@@ -539,7 +558,7 @@ describe("getChurchBySlug (query)", () => {
               category: "movement",
             },
           },
-        ]),
+        ],
       });
 
       const church = await getChurchBySlug(SLUG);
@@ -553,21 +572,21 @@ describe("getChurchBySlug (query)", () => {
 
     it("omite todas as seções quando a igreja não tem nada cadastrado", async () => {
       mockChurchPage({
-        schedule_events: ok([]),
-        activities: ok([]),
-        church_clergy: ok([]),
-        church_ministries: ok([]),
+        schedule_events: [],
+        activities: [],
+        church_clergy: [],
+        church_ministries: [],
       });
 
       await expect(getChurchBySlug(SLUG)).resolves.toEqual(baseChurch);
     });
 
-    it("trata `data: null` sem erro como seção vazia", async () => {
+    it("trata relação embutida `null` como seção vazia", async () => {
       mockChurchPage({
-        schedule_events: ok(null),
-        activities: ok(null),
-        church_clergy: ok(null),
-        church_ministries: ok(null),
+        schedule_events: null,
+        activities: null,
+        church_clergy: null,
+        church_ministries: null,
       });
 
       await expect(getChurchBySlug(SLUG)).resolves.toEqual(baseChurch);
@@ -575,32 +594,207 @@ describe("getChurchBySlug (query)", () => {
   });
 });
 
-// Filtros da consulta. Dependem da forma das consultas de hoje (uma em
-// `churches` e quatro em paralelo); revisar no VF-084, quando passarem a ser
-// uma consulta aninhada.
-describe("getChurchBySlug: filtros da consulta (rever no VF-084)", () => {
+// Forma da consulta (VF-084): uma ida ao banco, em `churches`, com as seções
+// embutidas pelo PostgREST e a ordem das relações explícita.
+describe("getChurchBySlug: forma da consulta", () => {
   beforeEach(() => {
     vi.mocked(createPublicClient).mockReset();
   });
 
-  it("busca a igreja pelo slug recebido", async () => {
+  // Sem filtro de `is_active` no clero: o vínculo encerrado alimenta o
+  // histórico da página.
+  it("filtra só pelo slug recebido", async () => {
     const client = mockChurchPage();
     await getChurchBySlug(SLUG);
     expect(callsTo(client, "churches", "eq")).toEqual([["slug", SLUG]]);
   });
 
-  it.each(RELATED_TABLES)(
-    "filtra $section ($table) pelo id da igreja encontrada",
-    async ({ table }) => {
+  it("faz uma consulta só, em `churches`, e pede no máximo uma linha", async () => {
+    const client = mockChurchPage();
+    await getChurchBySlug(SLUG);
+    expect(client.tables).toEqual(["churches"]);
+    expect(callsTo(client, "churches", "maybeSingle")).toEqual([[]]);
+  });
+
+  it("faz uma consulta só também quando a igreja não existe", async () => {
+    const client = mockChurchPageResponse(ok(null));
+    await getChurchBySlug("nao-existe");
+    expect(client.tables).toEqual(["churches"]);
+  });
+
+  it.each(EMBEDDED_RELATIONS)(
+    "embute $section ($relation) na consulta da igreja",
+    async ({ relation }) => {
       const client = mockChurchPage();
       await getChurchBySlug(SLUG);
-      expect(callsTo(client, table, "eq")).toEqual([["church_id", CHURCH_ID]]);
+      const [[columns]] = callsTo(client, "churches", "select");
+      expect(columns).toEqual(expect.stringContaining(`${relation}(`));
     },
   );
 
-  it("não consulta as seções quando a igreja não existe", async () => {
-    const client = mockChurchPage({ churches: ok(null) });
-    await getChurchBySlug("nao-existe");
-    expect(client.tables).toEqual(["churches"]);
+  it("embute os horários das atividades e os dados do clérigo e do ministério", async () => {
+    const client = mockChurchPage();
+    await getChurchBySlug(SLUG);
+    const [[columns]] = callsTo(client, "churches", "select");
+    expect(columns).toEqual(
+      expect.stringContaining("activities(*, activity_schedules(*))"),
+    );
+    expect(columns).toEqual(expect.stringContaining("church_clergy(*, clergy(*))"));
+    expect(columns).toEqual(
+      expect.stringContaining("church_ministries(*, ministries(*))"),
+    );
+  });
+
+  // Atividades e ministérios aparecem na ordem recebida; horários e clero são
+  // reordenados em `lib/utils`, mas os empates seguem a ordem recebida.
+  // O `id` desempata linhas do mesmo insert (mesmo `created_at`).
+  it("ordena as relações embutidas: horários por hora, o resto por cadastro e id", async () => {
+    const client = mockChurchPage();
+    await getChurchBySlug(SLUG);
+    expect(callsTo(client, "churches", "order")).toEqual([
+      ["time", { referencedTable: "schedule_events" }],
+      ["created_at", { referencedTable: "activities" }],
+      ["id", { referencedTable: "activities" }],
+      ["time", { referencedTable: "activities.activity_schedules" }],
+      ["created_at", { referencedTable: "church_clergy" }],
+      ["id", { referencedTable: "church_clergy" }],
+      ["created_at", { referencedTable: "church_ministries" }],
+      ["id", { referencedTable: "church_ministries" }],
+    ]);
+  });
+
+  it("mantém a ordem recebida das atividades, dos ministérios e do clero", async () => {
+    mockChurchPage({
+      activities: [
+        { id: "a2", name: "Catequese", description: null, activity_schedules: [] },
+        { id: "a1", name: "Adoração", description: null, activity_schedules: [] },
+      ],
+      church_ministries: [
+        {
+          ministries: {
+            id: "m2",
+            label: "Pastoral da Criança",
+            acronym: null,
+            category: "pastoral",
+          },
+        },
+        {
+          ministries: {
+            id: "m1",
+            label: "Pastoral Familiar",
+            acronym: null,
+            category: "pastoral",
+          },
+        },
+      ],
+      church_clergy: [
+        {
+          start_date: null,
+          end_date: null,
+          is_active: true,
+          clergy: { id: "v2", name: "Zacarias", role: "vicar", ...emptyClergyColumns },
+        },
+        {
+          start_date: null,
+          end_date: null,
+          is_active: true,
+          clergy: { id: "v1", name: "Abel", role: "vicar", ...emptyClergyColumns },
+        },
+      ],
+    });
+
+    const church = await getChurchBySlug(SLUG);
+
+    expect(church?.activities?.map((a) => a.id)).toEqual(["a2", "a1"]);
+    expect(church?.ministries?.pastorals?.map((m) => m.id)).toEqual(["m2", "m1"]);
+    expect(church?.clergy?.map((c) => c.id)).toEqual(["v2", "v1"]);
+  });
+
+  // A memoização em si é do React e só vale dentro de uma requisição (RSC);
+  // aqui fica garantido que a query passa por ela.
+  it("passa pelo `cache()` do React, para rodar uma vez por requisição", () => {
+    expect(cachedFunctions.has(getChurchBySlug)).toBe(true);
+  });
+
+  // `cache()` do React só memoiza dentro de uma requisição do React (RSC).
+  // Fora dela, cada chamada consulta de novo: um teste não reaproveita o
+  // resultado do cliente simulado de outro.
+  it("não guarda o resultado entre chamadas fora de uma requisição do React", async () => {
+    mockChurchPage({ name: "Primeira" });
+    const first = await getChurchBySlug(SLUG);
+
+    const secondClient = mockChurchPage({ name: "Segunda" });
+    const second = await getChurchBySlug(SLUG);
+
+    expect(first?.name).toBe("Primeira");
+    expect(second?.name).toBe("Segunda");
+    expect(secondClient.tables).toEqual(["churches"]);
+    expect(createPublicClient).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("toChurch", () => {
+  const row: DbChurch = { ...churchRow };
+
+  it("converte as colunas obrigatórias e omite as nulas", () => {
+    expect(toChurch(row)).toEqual(baseChurch);
+  });
+
+  it("omite `contact` quando nenhum contato está preenchido", () => {
+    expect(
+      toChurch({ ...row, image_url: "https://img/a.jpg" }),
+    ).not.toHaveProperty("contact");
+  });
+
+  it.each([
+    ["phone", "phone", "+558233334444"],
+    ["whatsapp", "whatsapp", "+5582988887777"],
+    ["email", "email", "secretaria@paroquia.org"],
+    ["instagram", "instagram", "@paroquia"],
+    ["facebook", "facebook", "paroquia"],
+    ["website", "website", "https://paroquia.org"],
+  ] as const)(
+    "cria `contact` só com `%s` quando é o único contato",
+    (column, field, value) => {
+      expect(toChurch({ ...row, [column]: value }).contact).toEqual({
+        [field]: value,
+      });
+    },
+  );
+
+  it("trata string vazia como ausente", () => {
+    expect(toChurch({ ...row, phone: "", image_url: "", type: "" })).toEqual(
+      baseChurch,
+    );
+  });
+
+  it("converte imagem, tipo e mapa para camelCase", () => {
+    expect(
+      toChurch({
+        ...row,
+        image_url: "https://img/a.jpg",
+        type: "chapel",
+        google_maps_url: "https://maps.google.com/?q=2",
+      }),
+    ).toEqual({
+      ...baseChurch,
+      imageUrl: "https://img/a.jpg",
+      type: "chapel",
+      googleMapsUrl: "https://maps.google.com/?q=2",
+    });
+  });
+
+  it("ignora as relações embutidas: as seções são da página da igreja", () => {
+    const church = toChurch(churchPageRow() as DbChurch);
+    for (const section of [
+      "masses",
+      "adorations",
+      "confessions",
+      "activities",
+      "clergy",
+      "ministries",
+    ]) {
+      expect(church).not.toHaveProperty(section);
+    }
   });
 });
