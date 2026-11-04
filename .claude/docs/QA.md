@@ -61,6 +61,8 @@ npm run test:e2e          # smoke das páginas públicas (Playwright, Chromium, 
 | CT-012 | `features/auth/admin-actions.integration.test.ts`, `features/auth/admin-validation.test.ts` | Validação da entrada das actions de admin (email, nome, senha, UUIDs); alvo só `role = 'editor'`; `createEditor` ativa o perfil explicitamente |
 | CT-013 | `features/auth/auth-provider.integration.test.tsx`, `features/auth/access.test.ts` | `canEditChurch` só para perfil ativo; perfil desativado tem a sessão encerrada no `AuthProvider` |
 | 404 | `tests/e2e/public-pages.spec.ts` | `/igreja/nao-existe` responde 404 com "Igreja não encontrada" |
+| Ícones (VF-090) | `tests/e2e/icons.spec.ts` | O `<head>` aponta `icon` e `apple-touch-icon` para `/icon.png` (32x32) e `/apple-icon.png` (180x180), nenhum `<link>` para o logo; ícones e logo respondem 200 como PNG e leves (até 5 KB, 15 KB e 50 KB) |
+| Erro (VF-092) | `app/error.integration.test.tsx`, `app/global-error.integration.test.tsx`, `features/theme/theme-script.integration.test.ts` | Mensagem para o fiel sem `error.message`; "Tentar novamente" chama `router.refresh()` e `reset()`; só o `digest` vai para o console; `global-error` com `lang="pt-BR"` e tema escuro salvo; script de tema autossuficiente |
 
 Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getChurchBySlug`, `getAllClergyWithChurch`) e o `toChurch` têm testes em `lib/supabase/queries/*.integration.test.ts`, inclusive a forma da consulta aninhada de `getChurchBySlug` (uma consulta, relações embutidas e ordem explícita). Seguem manuais: responsividade (CT-008, CT-014), dark mode, SEO completo (CT-009), links externos reais e os fluxos logados.
 
@@ -369,6 +371,8 @@ Use este checklist antes de cada deploy:
 - [ ] Imagens carregam (ou placeholder)
 - [ ] Layout responsivo OK
 - [ ] Dark mode funciona (se aplicável)
+- [ ] Favicon e ícone Apple aparecem (aba do navegador e "Adicionar à Tela de Início")
+- [ ] Página de erro (VF-092): com o Supabase fora do ar no `next dev` (`NEXT_PUBLIC_SUPABASE_URL=https://inexistente.invalid`), `/` mostra "Não foi possível carregar esta página", sem detalhe técnico, nos dois temas e no mobile. Em produção, páginas ISR já geradas continuam servidas do cache; slug sem versão em cache cai na página 500 genérica do Next (limitação do Next 15)
 
 ### Performance
 

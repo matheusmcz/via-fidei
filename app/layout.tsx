@@ -1,5 +1,5 @@
 import { AuthProvider } from "@/features/auth";
-import { ThemeProvider } from "@/features/theme";
+import { THEME_INIT_SCRIPT, ThemeProvider } from "@/features/theme";
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -30,10 +30,8 @@ export const metadata: Metadata = {
     "missas",
   ],
   authors: [{ name: "Via Fidei" }],
-  icons: {
-    icon: "/images/via-fidei-logo.png",
-    apple: "/images/via-fidei-logo.png",
-  },
+  // Favicon e ícone Apple vêm de `app/icon.png` e `app/apple-icon.png`
+  // (convenção de arquivos do App Router, VF-090).
   openGraph: {
     type: "website",
     locale: "pt_BR",
@@ -56,20 +54,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                const theme = localStorage.getItem('via-fidei-theme');
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                const shouldBeDark = theme === 'dark' || (!theme && prefersDark);
-                if (shouldBeDark) {
-                  document.documentElement.classList.add('dark');
-                }
-              } catch (e) {}
-            `,
-          }}
-        />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

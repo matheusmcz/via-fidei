@@ -103,7 +103,13 @@ O projeto segue uma arquitetura organizada por **features/domínios**, não por 
 
 Contém rotas, layouts e páginas da aplicação.
 
-- `layout.tsx` - Layout raiz com metadados, fontes e AuthProvider
+- `layout.tsx` - Layout raiz com metadados, fontes, AuthProvider e o script inline de tema (`THEME_INIT_SCRIPT` de `features/theme`)
+- `icon.png` (32 px) e `apple-icon.png` (180 px) - Favicon e ícone Apple pela convenção de arquivos do App Router (VF-090); o Next gera os `<link rel="icon">` e `<link rel="apple-touch-icon">` com hash. Não há `icons` no `metadata`. Gerados a partir do logo, com recorte central no favicon para o pino ficar legível em 16–32 px
+- `error.tsx` - Erro de renderização de qualquer rota, dentro do layout raiz (VF-092). Mostra `ErrorFallback` (`components/error-fallback.tsx`): texto para o fiel, sem `error.message`, botão "Tentar novamente" (`router.refresh()` + `reset()` numa transição, para buscar de novo os Server Components) e link para o início; registra só o `digest` no console
+- `global-error.tsx` - Erro no próprio layout raiz: desenha `<html>`/`<body>`, importa `globals.css` e aplica o tema salvo com o `THEME_INIT_SCRIPT` no `<head>` (HTML vindo do servidor) e com `applyStoredTheme()` num efeito (renderização no cliente, em que o React não executa `<script>` inline); mesmo `ErrorFallback`, que leva o foco ao título ao montar para o leitor de tela anunciar o erro
+- **Onde o `error.tsx` aparece (conferido com o Supabase fora do ar):** rotas dinâmicas (`/admin/*`), erros no cliente e o `next dev`. As páginas públicas são ISR: no Next 15, um erro durante a geração estática (build, revalidação ou primeira visita a um slug fora do `generateStaticParams`) **não** passa pelo `error.tsx`. Na revalidação, a versão em cache continua sendo servida; sem versão em cache (ex.: slug novo), o Next responde 500 com a página genérica `500.html` do pages router. No `next dev`, `/igreja/*` também cai na página genérica, porque o dev roda o `generateStaticParams` a cada requisição
+- `admin/loading.tsx` - Carregamento das páginas do admin (spinner com `role="status"`), dentro do `admin/layout.tsx`, na navegação entre as subrotas dinâmicas. Com o streaming, o `notFound()` de `admin/usuarios/[id]` passa a responder 200 (soft 404), aceitável numa área `noindex`
+- **Sem `loading.tsx` em `/igreja/[slug]` (decisão do VF-092):** com o `loading.tsx`, a página entra em streaming e o `notFound()` de um slug inexistente responde **200** em vez de 404 (soft 404, ruim para SEO). Conferido pelo e2e "igreja inexistente responde 404". Os slugs conhecidos já são pré-gerados e pré-carregados pelo `<Link>`, então o ganho seria pequeno
 - `page.tsx` - Página inicial (listagem de igrejas com busca e filtro)
 - `globals.css` - Estilos globais e variáveis CSS do Tailwind
 - `igreja/[slug]/page.tsx` - Página de detalhes da igreja (SSR com `generateStaticParams`)
@@ -185,10 +191,14 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 
 - `theme-provider.tsx` - Provider de tema claro/escuro
 - `theme-toggle.tsx` - Botão de alternância de tema
+- `theme-script.ts` - `applyStoredTheme()` (tema salvo em `via-fidei-theme` ou, sem ele, o do sistema) e `THEME_INIT_SCRIPT`, o script inline do `<head>` gerado a partir da mesma função (`toString()`), que por isso não pode usar imports nem constantes de fora do corpo
 
 ### `/components` - Componentes compartilhados
 
 Componentes reutilizáveis em todo o projeto.
+
+- `footer.tsx` - Rodapé das páginas públicas
+- `error-fallback.tsx` - Tela de erro do `app/error.tsx` e do `app/global-error.tsx` (VF-092)
 
 **`/components/ui`** - Componentes do shadcn/ui
 
@@ -279,7 +289,7 @@ Arquivos públicos servidos diretamente.
 
 **`/public/images`** - Imagens (estrutura flat)
 
-- `via-fidei-logo.png` - Logo e imagem padrão (placeholder)
+- `via-fidei-logo.png` - Logo do cabeçalho (via `next/image`) e imagem padrão das igrejas sem foto (VF-090: 1024 px, PNG com paleta, 8.403 bytes; antes 1.081.277). O nome foi mantido para não quebrar referências (README, código e eventuais `image_url` no banco). O original tinha ruído de ±2 no fundo roxo, que impedia a compressão; a versão leve reconstrói o desenho como mistura exata do roxo `rgb(106, 75, 145)` com o branco, a partir da luminância de cada pixel, mantendo o antisserrilhado. O fundo é opaco, então serve nos dois temas
 - Imagens de igrejas e clérigos por slug (ex: `sao-paulo-apostolo.jpg`, `pe-manoel-jose-dos-santos.jpg`)
 - Só formatos raster (`.jpg`, `.jpeg`, `.png`). O `next.config.ts` não liga `images.dangerouslyAllowSVG` (desde o VF-080): um `src` `.svg` no `next/image` é servido sem otimização, e o otimizador recusa SVG. Os cabeçalhos do otimizador seguem os padrões do Next (`Content-Disposition: attachment` e CSP com `sandbox` e `script-src 'none'`).
 
