@@ -20,9 +20,8 @@
 --   início 2021 e fim 2020-12-31 → inválido;
 --   mesmo ano dos dois lados     → válido, qualquer que seja a precisão.
 -- A ordem das datas aceita igualdade; a dos horários, não (07:00 às 07:00 é
--- recusado). Horário que atravessa a meia-noite (22:00 às 01:00) é recusado
--- de forma provisória: a pergunta de domínio (permitir vigília que vira o
--- dia?) ficou em aberto no VF-105 e vai para o board como decisão pendente.
+-- recusado). Horário que atravessa a meia-noite (22:00 às 01:00) também é
+-- recusado (D21): vigília que vira o dia fica só com o horário de início.
 --
 -- Por que "não futura" não é CHECK: depende de now(). Um CHECK precisa dar o
 -- mesmo resultado sempre (o Postgres reavalia em validate, restauração e

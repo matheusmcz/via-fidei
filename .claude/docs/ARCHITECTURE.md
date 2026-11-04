@@ -542,7 +542,7 @@ As colunas são `text` de propósito (VF-038). O banco aplica as regras com a me
 |---------|-------|------------|-----|
 | `time`, `end_time` de `schedule_events` e `activity_schedules` | Formato `HH:MM` com dois dígitos, 00:00–23:59, sem espaços (`7:30` e `24:00` são recusados) | `isValidTime()` | `is_valid_schedule_time()` · CHECK (`016`) |
 | `birth_date`, `death_date` de `clergy`; `start_date`, `end_date` de `church_clergy` | Formato `YYYY` (0001–9999) ou `YYYY-MM-DD` real (sem `YYYY-MM`, sem `0000`, sem `2024-02-30`, sem espaços) | `isValidClergyDate()` | `is_valid_clergy_date()` · CHECK (`016`) |
-| `end_time` × `time` (D16) | Término **depois** do início, estrito: `07:00` às `07:00` é recusado, e `22:00` às `01:00` (atravessa a meia-noite) também, **por ora**: a recusa de horário que vira o dia é provisória, até decisão do domínio (pergunta em aberto do VF-105) | `isScheduleTimeOrderValid()` | `is_schedule_time_order_valid()` · CHECK (`018`) |
+| `end_time` × `time` (D16) | Término **depois** do início, estrito: `07:00` às `07:00` é recusado, e `22:00` às `01:00` (atravessa a meia-noite) também (D21): vigília longa fica só com o horário de início, sem término | `isScheduleTimeOrderValid()` | `is_schedule_time_order_valid()` · CHECK (`018`) |
 | `end_date` × `start_date`; `death_date` × `birth_date` (D16) | Posterior ≥ anterior, na **menor precisão comum** (ver abaixo) | `isClergyDateOrderValid()` | `is_clergy_date_order_valid()` · CHECK (`018`) |
 | As quatro datas do clero (D17) | Não futura: data completa ≤ hoje; ano sozinho ≤ ano atual. Hoje é o dia em `America/Maceio` | `isClergyDateNotFuture()` + `getTodayInMaceio()` | `is_clergy_date_not_future()` + `clergy_today_in_maceio()` · trigger `BEFORE` (`018`) |
 

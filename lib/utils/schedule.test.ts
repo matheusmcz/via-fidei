@@ -80,7 +80,7 @@ describe("isScheduleTimeOrderValid", () => {
     ["07:00", "07:00"],
     ["18:00", "17:59"],
     ["23:59", "00:00"],
-    // Atravessar a meia-noite fica recusado até decisão do domínio.
+    // Atravessar a meia-noite é recusado (D21).
     ["22:00", "01:00"],
     ["10:00", "09:59"],
   ])("recusa %s às %s", (time, endTime) => {

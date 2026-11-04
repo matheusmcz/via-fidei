@@ -86,7 +86,7 @@ export const SCHEDULE_TIME_MESSAGES: Record<ScheduleTimeIssueReason, string> = {
 /**
  * True quando o término vem depois do início (`end_time > time`, estrito:
  * término igual ao início é recusado). Horário que atravessa a meia-noite
- * (22:00 às 01:00) também é recusado, até decisão do domínio (VF-105).
+ * (22:00 às 01:00) também é recusado (D21): vigília longa fica só com o início.
  * Não opina (devolve true) sem término ou com formato inválido: o formato tem
  * regra própria (`isValidTime()`).
  * Mesma regra do CHECK `is_schedule_time_order_valid()` (migration 018).
