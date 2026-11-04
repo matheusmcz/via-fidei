@@ -210,3 +210,33 @@ export interface Church {
   /** Groups, movements, and pastorals */
   ministries?: ChurchMinistries;
 }
+
+/**
+ * Validação das datas do clero e dos vínculos (VF-105, D16/D17).
+ * Cada motivo tem mensagem em `CLERGY_DATE_MESSAGES` (`@/lib/utils`).
+ */
+export type ClergyDateField = "birthDate" | "deathDate" | "startDate" | "endDate";
+
+export type ClergyDateIssueReason =
+  | "format"
+  | "future"
+  | "death-before-birth"
+  | "end-before-start";
+
+export interface ClergyDateIssue {
+  field: ClergyDateField;
+  reason: ClergyDateIssueReason;
+}
+
+/**
+ * Validação dos horários de `schedule_events` e `activity_schedules` (VF-105, D16).
+ * Cada motivo tem mensagem em `SCHEDULE_TIME_MESSAGES` (`@/lib/utils`).
+ */
+export type ScheduleTimeField = "time" | "endTime";
+
+export type ScheduleTimeIssueReason = "format" | "end-not-after-start";
+
+export interface ScheduleTimeIssue {
+  field: ScheduleTimeField;
+  reason: ScheduleTimeIssueReason;
+}

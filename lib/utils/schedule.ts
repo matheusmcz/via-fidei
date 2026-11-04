@@ -1,4 +1,10 @@
-import type { DayOfWeek, RecurrenceType, ScheduleEvent } from "@/types";
+import type {
+  DayOfWeek,
+  RecurrenceType,
+  ScheduleEvent,
+  ScheduleTimeIssue,
+  ScheduleTimeIssueReason,
+} from "@/types";
 
 /**
  * Portuguese day names (0 = Sunday)
@@ -69,6 +75,50 @@ const TIME_HH_MM = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 export function isValidTime(time: string): boolean {
   if (typeof time !== "string") return false;
   return TIME_HH_MM.test(time);
+}
+
+/** Mensagens para os formulários de edição (VF-021), por motivo. */
+export const SCHEDULE_TIME_MESSAGES: Record<ScheduleTimeIssueReason, string> = {
+  format: "Informe o horário no formato HH:MM (ex.: 07:30).",
+  "end-not-after-start": "O horário de término precisa ser depois do início.",
+};
+
+/**
+ * True quando o término vem depois do início (`end_time > time`, estrito:
+ * término igual ao início é recusado). Horário que atravessa a meia-noite
+ * (22:00 às 01:00) também é recusado (D21): vigília longa fica só com o início.
+ * Não opina (devolve true) sem término ou com formato inválido: o formato tem
+ * regra própria (`isValidTime()`).
+ * Mesma regra do CHECK `is_schedule_time_order_valid()` (migration 018).
+ */
+export function isScheduleTimeOrderValid(
+  time?: string | null,
+  endTime?: string | null,
+): boolean {
+  if (time == null || endTime == null) return true;
+  if (!isValidTime(time) || !isValidTime(endTime)) return true;
+  // HH:MM com dois dígitos: a ordem do texto é a ordem do horário.
+  return endTime > time;
+}
+
+/**
+ * Valida início e término de um horário (formato de cada um e ordem do par).
+ * O erro de ordem fica no término. Término ausente (`null`/`undefined`) não é
+ * erro; texto vazio é erro de formato, como no banco: o formulário grava `null`.
+ */
+export function validateScheduleTimes(times: {
+  time: string;
+  endTime?: string | null;
+}): ScheduleTimeIssue[] {
+  const issues: ScheduleTimeIssue[] = [];
+  if (!isValidTime(times.time)) issues.push({ field: "time", reason: "format" });
+  if (times.endTime != null && !isValidTime(times.endTime)) {
+    issues.push({ field: "endTime", reason: "format" });
+  }
+  if (!isScheduleTimeOrderValid(times.time, times.endTime)) {
+    issues.push({ field: "endTime", reason: "end-not-after-start" });
+  }
+  return issues;
 }
 
 /**

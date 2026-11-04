@@ -344,8 +344,9 @@ begin
   end if;
 
   -- Outro start_date na mesma igreja continua permitido (novo período).
+  -- Data passada: desde a 018, data futura é recusada (D17).
   insert into church_clergy (church_id, clergy_id, start_date, is_active)
-  values (v_church, v_clergy, '2030', false);
+  values (v_church, v_clergy, '2025', false);
 
   raise notice 'OK 5: vínculo duplicado recusado também com start_date nulo; upsert do seed atualiza';
 end $$;
