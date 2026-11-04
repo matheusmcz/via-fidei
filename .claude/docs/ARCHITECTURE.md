@@ -45,7 +45,7 @@ Resumo do que está em produção hoje:
 
 | Camada | Descrição |
 |--------|-----------|
-| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`018`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026; a `014` foi aplicada e conferida com o roteiro `supabase/tests/014_rls_permissoes_editor_verificacao.sql` em 31/10/2026; a `015` e a `016` foram aplicadas e conferidas com os roteiros de `supabase/tests/`; a `017` e a `018` precisam ser aplicadas pelo SQL Editor depois do merge e conferidas com os roteiros de `supabase/tests/` (a `018` tem também uma pré-verificação, que roda antes) — conferir o estado pelo schema, não por `supabase migration list`. |
+| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`018`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026; a `014` foi aplicada e conferida com o roteiro `supabase/tests/014_rls_permissoes_editor_verificacao.sql` em 31/10/2026; as `015`–`018` foram aplicadas e conferidas com os roteiros de `supabase/tests/` (a `017` e a `018` em 04/11/2026) — conferir o estado pelo schema, não por `supabase migration list`. |
 | **Chaves públicas** | URL + chave **publishable** ou **anon** (JWT) para o cliente. Resolução central em [`lib/supabase/env.ts`](../../lib/supabase/env.ts) — ver subseção **Variáveis de ambiente (Supabase + Vercel)** abaixo. `SUPABASE_SERVICE_ROLE_KEY` **apenas** servidor / `npm run seed` ([API keys](https://supabase.com/docs/guides/api/api-keys)). |
 | **Auth** | Supabase Auth + cookies (`@supabase/ssr`); [`middleware.ts`](../../middleware.ts) na raiz renova a sessão; [`features/auth/`](../../features/auth/) expõe `AuthProvider` e `useAuth`. |
 | **Leitura pública** | [`lib/supabase/public.ts`](../../lib/supabase/public.ts) — `createClient` do `@supabase/supabase-js` só com chave pública, **sem** `cookies()`. Usado em [`lib/supabase/queries/`](../../lib/supabase/queries/) (listagens, detalhes, `generateStaticParams`). |
@@ -476,7 +476,7 @@ Toda gravação em `churches`, `schedule_events`, `activities`, `activity_schedu
 - Dados sensíveis: nenhuma tabela auditada tem segredo; a senha fica em `auth.users`. `profiles` tem nome, e-mail, papel e status, que o admin já lê.
 - Tabela editável nova: criar o trigger `audit_log_changes` nela (argumentos: colunas da chave primária) e incluí-la no roteiro de verificação.
 - Server Actions gravam com o cliente da sessão: com o service role, o registro fica sem autor.
-- Ainda sem tela no admin e sem retenção ou limpeza do log. O `DELETE` de um perfil guarda nome e e-mail no log, e nenhuma role da API os apaga (pergunta de produto: retenção e anonimização).
+- Ainda sem tela no admin e sem retenção ou limpeza do log. O `DELETE` de um perfil guarda nome e e-mail no log, e nenhuma role da API os apaga (D22: retenção de 2 anos e anonimização a implementar no VF-108).
 - Roteiro de verificação: `supabase/tests/017_auditoria_alteracoes_verificacao.sql`.
 
 ### Autenticação
