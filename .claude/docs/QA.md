@@ -17,7 +17,7 @@ Este documento define os casos de teste, comportamentos esperados e fluxos de va
 
 - Node.js 24.x (ver `package.json` → `engines` e `.nvmrc`)
 - npm ou pnpm instalado
-- Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→014) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../../.env.example))
+- Projeto **Supabase** configurado: migrations (`supabase/migrations/` 001→018) aplicadas e `npm run seed` executado (variáveis em `.env.local` — ver [`.env.example`](../../.env.example))
 - Para os fluxos logados (CT-011 a CT-014): `npm run bootstrap-users` com `ADMIN_*` e `EDITOR_*` no `.env.local`. `EDITOR_CHURCH_ID` precisa ser o `id` atual de uma igreja no banco (os IDs mudam se o seed for refeito); sem ele, o script usa a primeira igreja.
 - Projeto Supabase **ativo**: no plano gratuito ele é pausado após inatividade e o endereço deixa de resolver (`ENOTFOUND` no log, erro 500 na home). Restaurar no Dashboard antes de testar.
 - **Build / Vercel:** URL e chave pública do Supabase disponíveis no ambiente do deploy (Production **e** Preview se houver PRs). Ver [ARCHITECTURE.md](ARCHITECTURE.md) (seção Supabase + Vercel) e [README](../../README.md) (instalação)
@@ -61,8 +61,10 @@ npm run test:e2e          # smoke das páginas públicas (Playwright, Chromium, 
 | CT-012 | `features/auth/admin-actions.integration.test.ts`, `features/auth/admin-validation.test.ts` | Validação da entrada das actions de admin (email, nome, senha, UUIDs); alvo só `role = 'editor'`; `createEditor` ativa o perfil explicitamente |
 | CT-013 | `features/auth/auth-provider.integration.test.tsx`, `features/auth/access.test.ts` | `canEditChurch` só para perfil ativo; perfil desativado tem a sessão encerrada no `AuthProvider` |
 | 404 | `tests/e2e/public-pages.spec.ts` | `/igreja/nao-existe` responde 404 com "Igreja não encontrada" |
+| Ícones (VF-090) | `tests/e2e/icons.spec.ts` | O `<head>` aponta `icon` e `apple-touch-icon` para `/icon.png` (32x32) e `/apple-icon.png` (180x180), nenhum `<link>` para o logo; ícones e logo respondem 200 como PNG e leves (até 5 KB, 15 KB e 50 KB) |
+| Erro (VF-092) | `app/error.integration.test.tsx`, `app/global-error.integration.test.tsx`, `features/theme/theme-script.integration.test.ts` | Mensagem para o fiel sem `error.message`; "Tentar novamente" chama `router.refresh()` e `reset()`; só o `digest` vai para o console; `global-error` com `lang="pt-BR"` e tema escuro salvo; script de tema autossuficiente |
 
-Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getChurchBySlug`, `getAllClergyWithChurch`) têm testes em `lib/supabase/queries/*.integration.test.ts`, e `findQueryError` em `lib/supabase/queries/query-error.test.ts`. Seguem manuais: responsividade (CT-008, CT-014), dark mode, SEO completo (CT-009), links externos reais e os fluxos logados.
+Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getChurchBySlug`, `getAllClergyWithChurch`) e o `toChurch` têm testes em `lib/supabase/queries/*.integration.test.ts`, inclusive a forma da consulta aninhada de `getChurchBySlug` (uma consulta, relações embutidas e ordem explícita). Seguem manuais: responsividade (CT-008, CT-014), dark mode, SEO completo (CT-009), links externos reais e os fluxos logados.
 
 ---
 
@@ -311,6 +313,7 @@ Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getChurchBySlug`, 
 - [ ] `/admin/usuarios/novo`: criar editor com nome, email, senha (mín. 6) e igrejas → volta para a lista com o editor novo, já **ativo**
 - [ ] `/admin/usuarios/novo`: email inválido, nome só com espaços, senha com menos de 6 ou mais de 72 caracteres → mensagem de erro no formulário, nenhum usuário criado
 - [ ] Usuário criado fora do painel (Dashboard do Supabase, cadastro público) nasce **inativo** (migration `015`): não edita nada até o admin ativá-lo. Roteiro: `supabase/tests/015_perfil_inicial_sem_permissao_verificacao.sql` (OK 1 a OK 7, não grava nada)
+- [ ] Auditoria (migration `017`): rodar `supabase/tests/017_auditoria_alteracoes_verificacao.sql` no SQL Editor; deve terminar sem erro (OK 0 a OK 13) e não grava nada. Cobre: gravações do editor, do admin, do service role e do SQL Editor geram registro em `audit_log` com o autor certo e, no `UPDATE`, só as colunas alteradas; editor e anon não leem o log; nenhuma role da API grava, altera ou apaga o log. Depois de salvar vínculos ou ativar/desativar um editor pelo painel, o registro em `audit_log` (`editor_churches`, `profiles`) tem o admin como autor
 - [ ] Página de admin e de login: título "Admin | Via Fidei" / "Login | Via Fidei" e `<meta name="robots" content="noindex, nofollow">`
 - [ ] Na página de uma igreja: "Gerenciar editores", lápis nas seções e, em seções vazias, mensagem + botão "Adicionar"
 
@@ -362,6 +365,7 @@ Use este checklist antes de cada deploy:
 - [ ] Seção de clero exibe corretamente
 - [ ] Horários exibem corretamente
 - [ ] Voltar para listagem funciona
+- [ ] Migration nova aplicada: rodar de novo os roteiros de `supabase/tests/` (`014`, `015`, `016`, `017`), todos sem erro
 
 ### Visual
 
@@ -369,6 +373,8 @@ Use este checklist antes de cada deploy:
 - [ ] Imagens carregam (ou placeholder)
 - [ ] Layout responsivo OK
 - [ ] Dark mode funciona (se aplicável)
+- [ ] Favicon e ícone Apple aparecem (aba do navegador e "Adicionar à Tela de Início")
+- [ ] Página de erro (VF-092): com o Supabase fora do ar no `next dev` (`NEXT_PUBLIC_SUPABASE_URL=https://inexistente.invalid`), `/` mostra "Não foi possível carregar esta página", sem detalhe técnico, nos dois temas e no mobile. Em produção, páginas ISR já geradas continuam servidas do cache; slug sem versão em cache cai na página 500 genérica do Next (limitação do Next 15)
 
 ### Performance
 

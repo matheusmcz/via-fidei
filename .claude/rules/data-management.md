@@ -27,6 +27,9 @@ paths:
 - Escrever migrations **idempotentes** (`if not exists`, `drop ... if exists`, `where not exists`): as migrations são aplicadas manualmente pelo **SQL Editor** do Supabase, e o histórico remoto (`supabase migration list`) não reflete o que foi aplicado.
 - Toda tabela nova: `enable row level security` e políticas explícitas em leitura e escrita, usando `is_admin()` e `is_editor_of(church_id)`.
 - Funções `security definer` devem ter `set search_path = public`.
+- Função que decide com `current_user` é `security invoker` (`010`, `014`), porque dentro de `security definer` `current_user` vira o dono da função. `security definer` serve para quem precisa do privilégio do dono e identifica o usuário por `auth.uid()`, como `is_admin()` (`008`) e o trigger de auditoria (`017`).
+- Tabela editável nova: criar nela o trigger `audit_log_changes` da `017` (argumentos: colunas da chave primária) e incluí-la no roteiro de verificação da auditoria. `audit_log` é só de inserção: nenhuma role da API recebe `INSERT`, `UPDATE`, `DELETE` ou `TRUNCATE` nela.
+- Server Actions gravam dados com o cliente da sessão (`lib/supabase/server.ts`). Gravando com o service role, a auditoria perde o autor (`actor_id` nulo). Service role só para a Auth Admin API e scripts.
 - Nunca aplicar migration em produção sem o usuário pedir.
 
 ## Validações

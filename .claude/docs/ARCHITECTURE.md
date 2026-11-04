@@ -45,7 +45,7 @@ Resumo do que está em produção hoje:
 
 | Camada | Descrição |
 |--------|-----------|
-| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`016`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026; a `014` foi aplicada e conferida com o roteiro `supabase/tests/014_rls_permissoes_editor_verificacao.sql` em 31/10/2026; a `015` e a `016` precisam ser aplicadas pelo SQL Editor depois do merge e conferidas com os roteiros de `supabase/tests/` (a `016` tem também uma pré-verificação, que roda antes) — conferir o estado pelo schema, não por `supabase migration list`. |
+| **Banco** | PostgreSQL no Supabase; schema versionado em [`supabase/migrations/`](../../supabase/migrations/) (`001`–`018`). Aplicar em ordem no **SQL Editor** do projeto (ou `supabase db push` com CLI linkado). As migrations `001`–`009` foram aplicadas pelo SQL Editor e não aparecem no histórico de migrations do projeto remoto (só a `010`, aplicada via MCP); as `011`–`013` foram conferidas pelo schema em 30/10/2026; a `014` foi aplicada e conferida com o roteiro `supabase/tests/014_rls_permissoes_editor_verificacao.sql` em 31/10/2026; a `015` e a `016` foram aplicadas e conferidas com os roteiros de `supabase/tests/`; a `017` e a `018` precisam ser aplicadas pelo SQL Editor depois do merge e conferidas com os roteiros de `supabase/tests/` (a `018` tem também uma pré-verificação, que roda antes) — conferir o estado pelo schema, não por `supabase migration list`. |
 | **Chaves públicas** | URL + chave **publishable** ou **anon** (JWT) para o cliente. Resolução central em [`lib/supabase/env.ts`](../../lib/supabase/env.ts) — ver subseção **Variáveis de ambiente (Supabase + Vercel)** abaixo. `SUPABASE_SERVICE_ROLE_KEY` **apenas** servidor / `npm run seed` ([API keys](https://supabase.com/docs/guides/api/api-keys)). |
 | **Auth** | Supabase Auth + cookies (`@supabase/ssr`); [`middleware.ts`](../../middleware.ts) na raiz renova a sessão; [`features/auth/`](../../features/auth/) expõe `AuthProvider` e `useAuth`. |
 | **Leitura pública** | [`lib/supabase/public.ts`](../../lib/supabase/public.ts) — `createClient` do `@supabase/supabase-js` só com chave pública, **sem** `cookies()`. Usado em [`lib/supabase/queries/`](../../lib/supabase/queries/) (listagens, detalhes, `generateStaticParams`). |
@@ -85,7 +85,7 @@ O Next.js só injeta no **bundle do browser** variáveis com prefixo `NEXT_PUBLI
 | [`lib/supabase/server.ts`](../../lib/supabase/server.ts) | Cliente com cookies (sessão) |
 | [`lib/supabase/client.ts`](../../lib/supabase/client.ts) | Cliente no browser |
 | [`lib/supabase/service-role.ts`](../../lib/supabase/service-role.ts) | Cliente privilegiado (service role) — só servidor |
-| [`lib/supabase/queries/churches.ts`](../../lib/supabase/queries/churches.ts) | `getChurches`, `getChurchBySlug`, `getChurchSlugs` |
+| [`lib/supabase/queries/churches.ts`](../../lib/supabase/queries/churches.ts) | `getChurches`, `getChurchBySlug` (consulta aninhada única, com `cache()` do React), `getChurchSlugs`; `toChurch` mapeia a linha de `churches` para as duas primeiras |
 | [`lib/supabase/queries/clergy.ts`](../../lib/supabase/queries/clergy.ts) | `getAllClergyWithChurch` |
 | [`supabase/migrations/*.sql`](../../supabase/migrations/) | Schema + RLS (`008_rls_policies.sql`) |
 
@@ -103,7 +103,13 @@ O projeto segue uma arquitetura organizada por **features/domínios**, não por 
 
 Contém rotas, layouts e páginas da aplicação.
 
-- `layout.tsx` - Layout raiz com metadados, fontes e AuthProvider
+- `layout.tsx` - Layout raiz com metadados, fontes, AuthProvider e o script inline de tema (`THEME_INIT_SCRIPT` de `features/theme`)
+- `icon.png` (32 px) e `apple-icon.png` (180 px) - Favicon e ícone Apple pela convenção de arquivos do App Router (VF-090); o Next gera os `<link rel="icon">` e `<link rel="apple-touch-icon">` com hash. Não há `icons` no `metadata`. Gerados a partir do logo, com recorte central no favicon para o pino ficar legível em 16–32 px
+- `error.tsx` - Erro de renderização de qualquer rota, dentro do layout raiz (VF-092). Mostra `ErrorFallback` (`components/error-fallback.tsx`): texto para o fiel, sem `error.message`, botão "Tentar novamente" (`router.refresh()` + `reset()` numa transição, para buscar de novo os Server Components) e link para o início; registra só o `digest` no console
+- `global-error.tsx` - Erro no próprio layout raiz: desenha `<html>`/`<body>`, importa `globals.css` e aplica o tema salvo com o `THEME_INIT_SCRIPT` no `<head>` (HTML vindo do servidor) e com `applyStoredTheme()` num efeito (renderização no cliente, em que o React não executa `<script>` inline); mesmo `ErrorFallback`, que leva o foco ao título ao montar para o leitor de tela anunciar o erro
+- **Onde o `error.tsx` aparece (conferido com o Supabase fora do ar):** rotas dinâmicas (`/admin/*`), erros no cliente e o `next dev`. As páginas públicas são ISR: no Next 15, um erro durante a geração estática (build, revalidação ou primeira visita a um slug fora do `generateStaticParams`) **não** passa pelo `error.tsx`. Na revalidação, a versão em cache continua sendo servida; sem versão em cache (ex.: slug novo), o Next responde 500 com a página genérica `500.html` do pages router. No `next dev`, `/igreja/*` também cai na página genérica, porque o dev roda o `generateStaticParams` a cada requisição
+- `admin/loading.tsx` - Carregamento das páginas do admin (spinner com `role="status"`), dentro do `admin/layout.tsx`, na navegação entre as subrotas dinâmicas. Com o streaming, o `notFound()` de `admin/usuarios/[id]` passa a responder 200 (soft 404), aceitável numa área `noindex`
+- **Sem `loading.tsx` em `/igreja/[slug]` (decisão do VF-092):** com o `loading.tsx`, a página entra em streaming e o `notFound()` de um slug inexistente responde **200** em vez de 404 (soft 404, ruim para SEO). Conferido pelo e2e "igreja inexistente responde 404". Os slugs conhecidos já são pré-gerados e pré-carregados pelo `<Link>`, então o ganho seria pequeno
 - `page.tsx` - Página inicial (listagem de igrejas com busca e filtro)
 - `globals.css` - Estilos globais e variáveis CSS do Tailwind
 - `igreja/[slug]/page.tsx` - Página de detalhes da igreja (SSR com `generateStaticParams`)
@@ -185,10 +191,14 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 
 - `theme-provider.tsx` - Provider de tema claro/escuro
 - `theme-toggle.tsx` - Botão de alternância de tema
+- `theme-script.ts` - `applyStoredTheme()` (tema salvo em `via-fidei-theme` ou, sem ele, o do sistema) e `THEME_INIT_SCRIPT`, o script inline do `<head>` gerado a partir da mesma função (`toString()`), que por isso não pode usar imports nem constantes de fora do corpo
 
 ### `/components` - Componentes compartilhados
 
 Componentes reutilizáveis em todo o projeto.
+
+- `footer.tsx` - Rodapé das páginas públicas
+- `error-fallback.tsx` - Tela de erro do `app/error.tsx` e do `app/global-error.tsx` (VF-092)
 
 **`/components/ui`** - Componentes do shadcn/ui
 
@@ -287,7 +297,7 @@ Arquivos públicos servidos diretamente.
 
 **`/public/images`** - Imagens (estrutura flat)
 
-- `via-fidei-logo.png` - Logo e imagem padrão (placeholder)
+- `via-fidei-logo.png` - Logo do cabeçalho (via `next/image`) e imagem padrão das igrejas sem foto (VF-090: 1024 px, PNG com paleta, 8.403 bytes; antes 1.081.277). O nome foi mantido para não quebrar referências (README, código e eventuais `image_url` no banco). O original tinha ruído de ±2 no fundo roxo, que impedia a compressão; a versão leve reconstrói o desenho como mistura exata do roxo `rgb(106, 75, 145)` com o branco, a partir da luminância de cada pixel, mantendo o antisserrilhado. O fundo é opaco, então serve nos dois temas
 - Imagens de igrejas e clérigos por slug (ex: `sao-paulo-apostolo.jpg`, `pe-manoel-jose-dos-santos.jpg`)
 - Só formatos raster (`.jpg`, `.jpeg`, `.png`). O `next.config.ts` não liga `images.dangerouslyAllowSVG` (desde o VF-080): um `src` `.svg` no `next/image` é servido sem otimização, e o otimizador recusa SVG. Os cabeçalhos do otimizador seguem os padrões do Next (`Content-Disposition: attachment` e CSP com `sandbox` e `script-src 'none'`).
 
@@ -315,6 +325,7 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `014_rls_permissoes_editor.sql` - Alinha o RLS à D3: trigger `BEFORE UPDATE` em `churches` que só deixa o editor alterar contato, foto e link do Maps; remove as políticas de escrita do editor em `church_clergy`
 - `015_perfil_inicial_sem_permissao.sql` - Perfil novo nasce sem permissão (VF-082): default de `profiles.is_active` passa a `false` e `handle_new_user()` grava `role = 'editor'` e `is_active = false` explicitamente. Não altera perfis existentes
 - `016_integridade_formatos.sql` - VF-088: funções `is_valid_schedule_time(text)` e `is_valid_clergy_date(text)` e CHECKs de formato em `time`/`end_time` (`schedule_events`, `activity_schedules`), `birth_date`/`death_date` (`clergy`) e `start_date`/`end_date` (`church_clergy`), criados `not valid` e validados no fim; troca o `unique (church_id, clergy_id, start_date)` da `005` pelo índice único `church_clergy_church_clergy_start_key` com `nulls not distinct` (Postgres 15+). Roteiros: `016_integridade_formatos_pre_verificacao.sql` (antes) e `016_integridade_formatos_verificacao.sql` (depois)
+- `017_auditoria_alteracoes.sql` - VF-093: tabela `audit_log` (só inserção, leitura só do admin) preenchida pelo trigger `AFTER INSERT/UPDATE/DELETE` `audit_log_changes` nas 10 tabelas editáveis. Ver **Auditoria de alterações (VF-093)** em Controle de acesso. Roteiro: `017_auditoria_alteracoes_verificacao.sql`
 - `018_ordem_e_datas_futuras.sql` - VF-105 (D16, D17): CHECKs de ordem `church_clergy_dates_order_check` (`end_date ≥ start_date`), `clergy_vital_dates_order_check` (`death_date ≥ birth_date`), `schedule_events_time_order_check` e `activity_schedules_time_order_check` (`end_time > time`), com as funções imutáveis `is_clergy_date_order_valid(text, text)` e `is_schedule_time_order_valid(text, text)`, criados `not valid` e validados no fim; triggers `BEFORE INSERT OR UPDATE` `clergy_dates_not_future` e `church_clergy_dates_not_future` (função `enforce_clergy_dates_not_future()`, com `is_clergy_date_not_future(text, text)` e `clergy_today_in_maceio()`), que recusam data futura só nas colunas que mudaram. Depende da `016`. Roteiros: `018_ordem_e_datas_futuras_pre_verificacao.sql` (antes) e `018_ordem_e_datas_futuras_verificacao.sql` (depois)
 
 Roteiros de verificação manual ficam em `supabase/tests/` (ex.: `014_rls_permissoes_editor_verificacao.sql`), para rodar no SQL Editor dentro de `begin … rollback`.
@@ -340,7 +351,7 @@ Stack definida na D9. Nenhum teste grava no Supabase; os que precisarem gravar d
 - `tests/setup/env.ts`: apaga as variáveis do Supabase antes dos testes do Vitest, para que nenhum teste alcance o banco real (local e CI se comportam igual).
 - `tests/setup/dom.ts`: matchers do jest-dom, `cleanup` entre testes e stubs de APIs que o jsdom não tem (usadas pelo Radix).
 - `tests/fixtures/domain.ts`: `makeChurch`, `makeClergy`, `makeClergyWithChurch`.
-- `tests/fixtures/supabase.ts`: cliente Supabase simulado; qualquer cadeia de filtros resolve com a resposta configurada por tabela (tabela sem resposta volta lista vazia). Usado com `vi.mock("@/lib/supabase/public")` e `mockPublicClient(respostasPorTabela)`. Registra as tabelas em `client.tables` e cada método encadeado em `client.calls` (`{ table, method, args }`); `callsTo(client, tabela, método)` filtra as chamadas (ex.: os `eq` de `churches`). A resposta `{ reject: Error }` simula o `fetch` rejeitado.
+- `tests/fixtures/supabase.ts`: cliente Supabase simulado; qualquer cadeia de filtros resolve com a resposta configurada por tabela (tabela sem resposta volta lista vazia). Usado com `vi.mock("@/lib/supabase/public")` e `mockPublicClient(respostasPorTabela)`. Registra as tabelas em `client.tables` e cada método encadeado em `client.calls` (`{ table, method, args }`); `callsTo(client, tabela, método)` filtra as chamadas (ex.: os `eq` de `churches`). A resposta `{ reject: Error }` simula o `fetch` rejeitado. Consulta aninhada (ex.: `getChurchBySlug`) responde pela tabela raiz, com as relações embutidas na própria linha: em `churches.integration.test.ts`, `churchPageRow()` monta a igreja com `schedule_events`, `activities`, `church_clergy` e `church_ministries`, e `mockChurchPage(sobrescritas)` / `mockChurchPageResponse(resposta)` configuram o cliente.
 - `tests/fixtures/supabase-auth.ts`: cliente simulado com `auth` (`getUser`, `signInWithPassword`, `signOut`, `onAuthStateChange`) para Server Actions e `AuthProvider`. Aceita fila de resultados por tabela (cada `from()` consome o próximo) e registra a cadeia de chamadas com os argumentos (`findQueries`, `argsOf`), para conferir o que seria gravado.
 - [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml): em PR e push para `develop` e `main`. Jobs: `quality` (lint, tipos, unitários, integração; sem secrets), `supabase-env` (falha com mensagem clara se faltarem os secrets), `build` (envia o `.next` como artefato) e `e2e` (reaproveita o build; cache dos browsers do Playwright). Secrets do repositório: `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (chave pública, nunca a `service_role`).
 - `.gitignore` ignora só `.github/copilot-instructions.md` (VF-062); o restante de `.github/` é versionado.
@@ -352,7 +363,8 @@ Stack definida na D9. Nenhum teste grava no Supabase; os que precisarem gravar d
 3. **Leituras públicas** (home, detalhe da igreja, clero): `lib/supabase/public.ts` + `queries/*` — sem `cookies()`, role `anon` nas políticas. `generateStaticParams` em `/igreja/[slug]` usa o mesmo cliente público.
 4. **Sessão autenticada**: `lib/supabase/server.ts` (cookies) — login, `/admin`, Server Actions; **`middleware.ts`** na raiz renova tokens antes das rotas.
 5. **ISR** com `revalidate = 60` nas páginas que consomem Supabase.
-   - **Erro do Supabase lança; "não encontrado" é `null`.** As queries de `lib/supabase/queries/` nunca transformam erro (projeto pausado, rede, falta de permissão/GRANT) em lista vazia ou `null`: lançam o erro, e com ISR o Next mantém a última versão boa em cache. Linhas filtradas pelo RLS não geram erro: chegam como `null` ou lista vazia. Só a ausência de linha vira `null` (ex.: `getChurchBySlug` usa `.maybeSingle()`), e só esse caso leva ao `notFound()`. Consultas paralelas passam por `findQueryError()` (`queries/query-error.ts`).
+   - **Erro do Supabase lança; "não encontrado" é `null`.** As queries de `lib/supabase/queries/` nunca transformam erro (projeto pausado, rede, falta de permissão/GRANT) em lista vazia ou `null`: lançam o erro, e com ISR o Next mantém a última versão boa em cache. Linhas filtradas pelo RLS não geram erro: chegam como `null` ou lista vazia. Só a ausência de linha vira `null` (ex.: `getChurchBySlug` usa `.maybeSingle()`), e só esse caso leva ao `notFound()`.
+   - **Página da igreja: uma ida ao banco por render (VF-084).** `getChurchBySlug` faz uma consulta só em `churches`, com as seções embutidas pelo PostgREST: `schedule_events(*)`, `activities(*, activity_schedules(*))`, `church_clergy(*, clergy(*))` (sem filtro de `is_active`: o `end_date` alimenta o histórico) e `church_ministries(*, ministries(*))`. Falta de permissão em uma tabela embutida é erro da consulta inteira, e lança. A ordem das relações é explícita (`order` com `referencedTable`): horários por `time`; atividades, clero e ministérios por `created_at` (ordem de cadastro) e depois `id` (desempate de linhas do mesmo insert), porque a página exibe atividades e ministérios na ordem recebida e os empates de `sortClergyByRole`/`sortClergyByStartDate` também a seguem. A função é envolvida em `cache()` do React: `generateMetadata` e a página chamam com o mesmo slug e a consulta roda uma vez por requisição (fora de uma requisição do React, como nos testes, não memoiza).
 6. **UI com estado local**: `features/churches` com busca/filtro/paginação em `useState` após hidratação (dados já vindos do servidor).
 
 ## Convenções de código
@@ -441,6 +453,31 @@ Um editor pode ser vinculado a **múltiplas igrejas**. Admin tem acesso de ediç
 - O trigger só age nas roles da API (`authenticated`, `anon`). Service role (seed) e SQL Editor continuam alterando tudo.
 - Erro devolvido ao editor: código `42501`, mensagem "O editor só altera contato, foto e link do Maps da igreja; nome, slug, endereço, bairro e tipo são do admin".
 - Roteiro de verificação: `supabase/tests/014_rls_permissoes_editor_verificacao.sql` (roda no SQL Editor dentro de `begin … rollback`, não grava nada).
+
+### Auditoria de alterações (VF-093)
+
+Toda gravação em `churches`, `schedule_events`, `activities`, `activity_schedules`, `church_ministries`, `ministries`, `clergy`, `church_clergy`, `profiles` e `editor_churches` gera um registro em `audit_log` (migration `017`), pelo trigger `audit_log_changes` (`AFTER INSERT OR UPDATE OR DELETE … FOR EACH ROW`). Vale para qualquer caminho: API, Server Actions, seed, SQL Editor e cascatas. A exceção é `TRUNCATE`, que não dispara trigger por linha: o PostgREST não o expõe, e no SQL Editor deve-se usar `DELETE` para manter o rastro.
+
+| Coluna | Conteúdo |
+|--------|----------|
+| `id`, `occurred_at`, `transaction_id` | Ordem, momento da transação (`now()`) e transação, para agrupar uma operação com as cascatas |
+| `actor_id` | `auth.uid()` de quem gravou pela API; nulo para service role (seed, scripts, Auth Admin API), SQL Editor e GoTrue |
+| `actor_db_role` | Role do Postgres: `authenticated`, `service_role`, ou a da sessão (`postgres` no SQL Editor, `supabase_auth_admin` no GoTrue) |
+| `actor_app_role` | Papel em `profiles` (`admin`/`editor`) no momento da gravação (quem altera o próprio perfil fica com o papel de antes) |
+| `table_name`, `operation`, `record_pk` | Tabela, `INSERT`/`UPDATE`/`DELETE` e a chave primária em `jsonb` (`{"id": …}`; em `editor_churches`, `{"editor_id": …, "church_id": …}`) |
+| `church_id` | Igreja da linha (o `id` em `churches`, `church_id` nas tabelas filhas, a igreja da atividade em `activity_schedules`). Nulo em `clergy`, `ministries` e `profiles`, e em `activity_schedules` apagado em cascata com a atividade |
+| `old_data`, `new_data` | `INSERT`: só `new_data`, com a linha inteira. `UPDATE`: só as colunas que mudaram, antes e depois. `DELETE`: só `old_data`, com a linha inteira |
+
+- **Só o admin lê** (política `audit_log_select_admin` com `is_admin()`). Editor lê zero linhas; `anon` não tem `SELECT`. **Ninguém grava, altera ou apaga pela API**: `INSERT`, `UPDATE`, `DELETE` e `TRUNCATE` revogados de `anon`, `authenticated` e `service_role` (o service role só lê). O registro é gravado pela função do trigger, `security definer`, como dono da tabela.
+- **Por que `security definer` aqui e `security invoker` na `010`/`014`:** aqueles triggers decidem permissão com `current_user`, que dentro de `security definer` vira o dono da função. Este não decide nada: é `AFTER`, roda só depois que o RLS e os triggers `BEFORE` aceitaram a gravação, e não altera a linha. O autor vem de `auth.uid()` (claims do JWT) e a role de `current_setting('role')`, que o `SET ROLE` do PostgREST define e o `security definer` não muda.
+- No `UPDATE`, `updated_at` não conta como mudança, e `UPDATE` sem mudança real (ex.: upsert do seed com os mesmos valores) não gera registro. Gravação recusada (RLS, trigger `BEFORE`, CHECK) não gera registro.
+- Sem foreign key em `actor_id` e `church_id`: o registro sobrevive ao usuário e à igreja apagados.
+- Índices: tabela + linha (`table_name, record_pk, occurred_at desc`), autor, igreja e data.
+- Dados sensíveis: nenhuma tabela auditada tem segredo; a senha fica em `auth.users`. `profiles` tem nome, e-mail, papel e status, que o admin já lê.
+- Tabela editável nova: criar o trigger `audit_log_changes` nela (argumentos: colunas da chave primária) e incluí-la no roteiro de verificação.
+- Server Actions gravam com o cliente da sessão: com o service role, o registro fica sem autor.
+- Ainda sem tela no admin e sem retenção ou limpeza do log. O `DELETE` de um perfil guarda nome e e-mail no log, e nenhuma role da API os apaga (pergunta de produto: retenção e anonimização).
+- Roteiro de verificação: `supabase/tests/017_auditoria_alteracoes_verificacao.sql`.
 
 ### Autenticação
 

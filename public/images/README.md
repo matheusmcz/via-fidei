@@ -6,6 +6,8 @@ Esta pasta contém as imagens das igrejas e clérigos.
 
 Quando uma igreja não possui imagem (`imageUrl` ausente), o sistema utiliza automaticamente o arquivo `via-fidei-logo.png`.
 
+O logo é um PNG com paleta de 1024 px e cerca de 8 KB (VF-090). Ao trocá-lo, mantenha o arquivo leve: ele também é baixado como imagem padrão. Favicon e ícone Apple não usam este arquivo: ficam em `app/icon.png` e `app/apple-icon.png`.
+
 ## Estrutura (flat)
 
 ```
