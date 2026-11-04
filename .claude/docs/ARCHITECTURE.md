@@ -317,6 +317,7 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `014_rls_permissoes_editor.sql` - Alinha o RLS à D3: trigger `BEFORE UPDATE` em `churches` que só deixa o editor alterar contato, foto e link do Maps; remove as políticas de escrita do editor em `church_clergy`
 - `015_perfil_inicial_sem_permissao.sql` - Perfil novo nasce sem permissão (VF-082): default de `profiles.is_active` passa a `false` e `handle_new_user()` grava `role = 'editor'` e `is_active = false` explicitamente. Não altera perfis existentes
 - `016_integridade_formatos.sql` - VF-088: funções `is_valid_schedule_time(text)` e `is_valid_clergy_date(text)` e CHECKs de formato em `time`/`end_time` (`schedule_events`, `activity_schedules`), `birth_date`/`death_date` (`clergy`) e `start_date`/`end_date` (`church_clergy`), criados `not valid` e validados no fim; troca o `unique (church_id, clergy_id, start_date)` da `005` pelo índice único `church_clergy_church_clergy_start_key` com `nulls not distinct` (Postgres 15+). Roteiros: `016_integridade_formatos_pre_verificacao.sql` (antes) e `016_integridade_formatos_verificacao.sql` (depois)
+- `017_auditoria_alteracoes.sql` - VF-093: tabela `audit_log` (só inserção, leitura só do admin) preenchida pelo trigger `AFTER INSERT/UPDATE/DELETE` `audit_log_changes` nas 10 tabelas editáveis. Ver **Auditoria de alterações (VF-093)** em Controle de acesso. Roteiro: `017_auditoria_alteracoes_verificacao.sql`
 
 Roteiros de verificação manual ficam em `supabase/tests/` (ex.: `014_rls_permissoes_editor_verificacao.sql`), para rodar no SQL Editor dentro de `begin … rollback`.
 
@@ -443,6 +444,31 @@ Um editor pode ser vinculado a **múltiplas igrejas**. Admin tem acesso de ediç
 - O trigger só age nas roles da API (`authenticated`, `anon`). Service role (seed) e SQL Editor continuam alterando tudo.
 - Erro devolvido ao editor: código `42501`, mensagem "O editor só altera contato, foto e link do Maps da igreja; nome, slug, endereço, bairro e tipo são do admin".
 - Roteiro de verificação: `supabase/tests/014_rls_permissoes_editor_verificacao.sql` (roda no SQL Editor dentro de `begin … rollback`, não grava nada).
+
+### Auditoria de alterações (VF-093)
+
+Toda gravação em `churches`, `schedule_events`, `activities`, `activity_schedules`, `church_ministries`, `ministries`, `clergy`, `church_clergy`, `profiles` e `editor_churches` gera um registro em `audit_log` (migration `017`), pelo trigger `audit_log_changes` (`AFTER INSERT OR UPDATE OR DELETE … FOR EACH ROW`). Vale para qualquer caminho: API, Server Actions, seed, SQL Editor e cascatas. A exceção é `TRUNCATE`, que não dispara trigger por linha: o PostgREST não o expõe, e no SQL Editor deve-se usar `DELETE` para manter o rastro.
+
+| Coluna | Conteúdo |
+|--------|----------|
+| `id`, `occurred_at`, `transaction_id` | Ordem, momento da transação (`now()`) e transação, para agrupar uma operação com as cascatas |
+| `actor_id` | `auth.uid()` de quem gravou pela API; nulo para service role (seed, scripts, Auth Admin API), SQL Editor e GoTrue |
+| `actor_db_role` | Role do Postgres: `authenticated`, `service_role`, ou a da sessão (`postgres` no SQL Editor, `supabase_auth_admin` no GoTrue) |
+| `actor_app_role` | Papel em `profiles` (`admin`/`editor`) no momento da gravação (quem altera o próprio perfil fica com o papel de antes) |
+| `table_name`, `operation`, `record_pk` | Tabela, `INSERT`/`UPDATE`/`DELETE` e a chave primária em `jsonb` (`{"id": …}`; em `editor_churches`, `{"editor_id": …, "church_id": …}`) |
+| `church_id` | Igreja da linha (o `id` em `churches`, `church_id` nas tabelas filhas, a igreja da atividade em `activity_schedules`). Nulo em `clergy`, `ministries` e `profiles`, e em `activity_schedules` apagado em cascata com a atividade |
+| `old_data`, `new_data` | `INSERT`: só `new_data`, com a linha inteira. `UPDATE`: só as colunas que mudaram, antes e depois. `DELETE`: só `old_data`, com a linha inteira |
+
+- **Só o admin lê** (política `audit_log_select_admin` com `is_admin()`). Editor lê zero linhas; `anon` não tem `SELECT`. **Ninguém grava, altera ou apaga pela API**: `INSERT`, `UPDATE`, `DELETE` e `TRUNCATE` revogados de `anon`, `authenticated` e `service_role` (o service role só lê). O registro é gravado pela função do trigger, `security definer`, como dono da tabela.
+- **Por que `security definer` aqui e `security invoker` na `010`/`014`:** aqueles triggers decidem permissão com `current_user`, que dentro de `security definer` vira o dono da função. Este não decide nada: é `AFTER`, roda só depois que o RLS e os triggers `BEFORE` aceitaram a gravação, e não altera a linha. O autor vem de `auth.uid()` (claims do JWT) e a role de `current_setting('role')`, que o `SET ROLE` do PostgREST define e o `security definer` não muda.
+- No `UPDATE`, `updated_at` não conta como mudança, e `UPDATE` sem mudança real (ex.: upsert do seed com os mesmos valores) não gera registro. Gravação recusada (RLS, trigger `BEFORE`, CHECK) não gera registro.
+- Sem foreign key em `actor_id` e `church_id`: o registro sobrevive ao usuário e à igreja apagados.
+- Índices: tabela + linha (`table_name, record_pk, occurred_at desc`), autor, igreja e data.
+- Dados sensíveis: nenhuma tabela auditada tem segredo; a senha fica em `auth.users`. `profiles` tem nome, e-mail, papel e status, que o admin já lê.
+- Tabela editável nova: criar o trigger `audit_log_changes` nela (argumentos: colunas da chave primária) e incluí-la no roteiro de verificação.
+- Server Actions gravam com o cliente da sessão: com o service role, o registro fica sem autor.
+- Ainda sem tela no admin e sem retenção ou limpeza do log. O `DELETE` de um perfil guarda nome e e-mail no log, e nenhuma role da API os apaga (pergunta de produto: retenção e anonimização).
+- Roteiro de verificação: `supabase/tests/017_auditoria_alteracoes_verificacao.sql`.
 
 ### Autenticação
 
