@@ -3,6 +3,7 @@ import { createPublicClient } from "@/lib/supabase/public";
 import {
   callsTo,
   mockPublicClient,
+  ok,
   type FakeQueryResponse,
   type FakeQueryResult,
 } from "@/tests/fixtures/supabase";
@@ -288,10 +289,6 @@ const churchMinistryRows = [
     },
   },
 ];
-
-function ok(data: unknown): FakeQueryResult {
-  return { data, error: null };
-}
 
 type EmbeddedRelation =
   | "schedule_events"

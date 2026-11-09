@@ -1,9 +1,9 @@
 // @vitest-environment node
 import { createClient } from "@/lib/supabase/server";
 import {
-  createFakeAuthClient,
-  type FakeAuthClientOptions,
-} from "@/tests/fixtures/supabase-auth";
+  createFakeSupabaseClient,
+  type FakeSupabaseOptions,
+} from "@/tests/fixtures/supabase";
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -23,8 +23,8 @@ vi.mock("next/navigation", () => ({
 
 const USER_ID = "5d2e8f1a-3c4b-4a6d-8e9f-7b1c2d3e4f5a";
 
-function mockServerClient(options: FakeAuthClientOptions) {
-  const client = createFakeAuthClient(options);
+function mockServerClient(options: FakeSupabaseOptions) {
+  const client = createFakeSupabaseClient(options);
   vi.mocked(createClient).mockResolvedValue(
     client as unknown as Awaited<ReturnType<typeof createClient>>,
   );
@@ -60,7 +60,10 @@ describe("login (Server Action)", () => {
   });
 
   it("leva o admin ativo para /admin", async () => {
-    mockServerClient({ user: { id: USER_ID }, tables: profile("admin", true) });
+    mockServerClient({
+      user: { id: USER_ID },
+      responses: profile("admin", true),
+    });
 
     await expect(login(credentials())).rejects.toThrow("NEXT_REDIRECT:/admin");
   });
@@ -68,7 +71,7 @@ describe("login (Server Action)", () => {
   it("leva o editor ativo para a home", async () => {
     const client = mockServerClient({
       user: { id: USER_ID },
-      tables: profile("editor", true),
+      responses: profile("editor", true),
     });
 
     await expect(login(credentials())).rejects.toThrow("NEXT_REDIRECT:/");
@@ -78,7 +81,7 @@ describe("login (Server Action)", () => {
   it("recusa o editor desativado e encerra a sessão aberta pelo login", async () => {
     const client = mockServerClient({
       user: { id: USER_ID },
-      tables: profile("editor", false),
+      responses: profile("editor", false),
     });
 
     await expect(login(credentials())).resolves.toEqual({
@@ -94,7 +97,7 @@ describe("login (Server Action)", () => {
   it("recusa o admin desativado", async () => {
     const client = mockServerClient({
       user: { id: USER_ID },
-      tables: profile("admin", false),
+      responses: profile("admin", false),
     });
 
     await expect(login(credentials())).resolves.toEqual({
@@ -106,7 +109,7 @@ describe("login (Server Action)", () => {
   it("recusa e encerra a sessão quando o perfil não carrega", async () => {
     const client = mockServerClient({
       user: { id: USER_ID },
-      tables: {
+      responses: {
         profiles: { data: null, error: { message: "fetch failed" } },
       },
     });
@@ -123,7 +126,7 @@ describe("login (Server Action)", () => {
   it("avisa quando não consegue encerrar a sessão do perfil recusado", async () => {
     mockServerClient({
       user: { id: USER_ID },
-      tables: profile("editor", false),
+      responses: profile("editor", false),
       signOutError: { message: "fetch failed" },
     });
 

@@ -1,12 +1,13 @@
 // @vitest-environment node
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
-import type { FakeQueryResult } from "@/tests/fixtures/supabase";
 import {
   argsOf,
-  createFakeAuthClient,
+  createFakeSupabaseClient,
   findQueries,
-} from "@/tests/fixtures/supabase-auth";
+  type FakeQueryResult,
+  type FakeTableResponses,
+} from "@/tests/fixtures/supabase";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EDITOR_NOT_FOUND_MESSAGE } from "./access";
 import {
@@ -38,10 +39,13 @@ const NO_ROWS_ERROR = {
   message: "JSON object requested, multiple (or no) rows returned",
 };
 
-function mockServerClient(profiles: FakeQueryResult[], extra = {}) {
-  const client = createFakeAuthClient({
+function mockServerClient(
+  profiles: FakeQueryResult[],
+  extra: FakeTableResponses = {},
+) {
+  const client = createFakeSupabaseClient({
     user: { id: ADMIN_ID },
-    tables: { profiles, ...extra },
+    responses: { profiles, ...extra },
   });
   vi.mocked(createClient).mockResolvedValue(
     client as unknown as Awaited<ReturnType<typeof createClient>>,
@@ -306,10 +310,7 @@ describe("updateEditorChurches", () => {
     await expect(updateEditorChurches(ADMIN_ID, [CHURCH_A])).resolves.toEqual({
       error: EDITOR_NOT_FOUND_MESSAGE,
     });
-    expect(client.queries.map((query) => query.table)).toEqual([
-      "profiles",
-      "profiles",
-    ]);
+    expect(client.tables).toEqual(["profiles", "profiles"]);
   });
 
   it("para sem tocar nos vínculos quando a leitura do alvo falha", async () => {
@@ -321,10 +322,7 @@ describe("updateEditorChurches", () => {
     await expect(updateEditorChurches(EDITOR_ID, [CHURCH_A])).resolves.toEqual({
       error: "fetch failed",
     });
-    expect(client.queries.map((query) => query.table)).toEqual([
-      "profiles",
-      "profiles",
-    ]);
+    expect(client.tables).toEqual(["profiles", "profiles"]);
   });
 
   it("recusa igreja ou editor inválidos", async () => {
