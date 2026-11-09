@@ -31,6 +31,9 @@ yarn-error.log*
 
 # local env files
 .env*.local
+# Supabase local dos testes do projeto `db` (VF-098): gerado por máquina com
+# `npm run test:db:env`. Ver .env.example.
+.env.test*
 
 # vercel
 .vercel

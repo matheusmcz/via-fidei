@@ -21,13 +21,15 @@ npm run lint             # ESLint (next lint)
 npx tsc --noEmit         # checagem de tipos
 npm run test:unit        # Vitest: regras puras (*.test.ts), ambiente node
 npm run test:integration # Vitest: componentes e queries com Supabase simulado (*.integration.test.ts[x]), jsdom
+npm run test:db          # Vitest: RLS e triggers no Supabase LOCAL (*.db.test.ts); opt-in, precisa de Docker
+npm run test:db:env      # gera o .env.test (não versionado) a partir do stack local no ar
 npm run test:e2e         # Playwright (Chromium): build + next start na porta 3203, smoke só de leitura
 npm test                 # unit + integration
 npm run seed             # popula o banco a partir de data/*.ts (service role)
 npm run bootstrap-users  # cria admin + editor de teste (service role)
 ```
 
-Testes: Vitest + Testing Library e Playwright (D9). Unitários e de integração ficam ao lado do código; infraestrutura (setup, fixtures, specs e2e) em `tests/`. Nenhum teste grava no Supabase: o e2e só lê o banco configurado no ambiente, e testes que gravam dados exigem o Supabase local (D10, ainda não configurado). Primeira vez com e2e: `npx playwright install chromium`; `E2E_SKIP_BUILD=1` reaproveita um build existente.
+Testes: Vitest + Testing Library e Playwright (D9). Unitários e de integração ficam ao lado do código; infraestrutura (setup, fixtures, specs e2e) em `tests/`. Nenhum teste grava no Supabase de produção: o e2e só lê o banco configurado no ambiente, e os testes que gravam dados rodam no Supabase local (D10), no projeto `db` (`npm run test:db`, opt-in: precisa de `npx supabase start` e fica fora do `npm test` e do CI). Primeira vez com o `test:db`: `npm run test:db:env` gera o `.env.test`, que não é versionado. Primeira vez com e2e: `npx playwright install chromium`; `E2E_SKIP_BUILD=1` reaproveita um build existente.
 
 CI no GitHub Actions (`.github/workflows/ci.yml`) em PR e push para `develop` e `main`: lint, tipos, unitários, integração, build e e2e. Build e e2e precisam dos secrets `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no repositório. O agente `tester` roda as mesmas camadas no fluxo abaixo.
 

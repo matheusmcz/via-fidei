@@ -76,6 +76,8 @@ O Next.js só injeta no **bundle do browser** variáveis com prefixo `NEXT_PUBLI
 
 **Local:** copie [`.env.example`](../../.env.example) para `.env.local`. O `.env.local` não é enviado ao Git; na Vercel as variáveis vêm do painel ou da integração.
 
+**Testes (`.env.test`, VF-098):** o `.env.test` aponta só para o Supabase local (`http://127.0.0.1:54321`) e **não é versionado** — o `.gitignore` cobre `.env.test*`, e a regra "nunca commitar `.env*`" vale sem exceção. Cada máquina gera o seu com `npm run test:db:env` (ver **Testes contra o Supabase local**). Chave de projeto real nunca entra nele. E se o arquivo apontar para um projeto real, `tests/db/env.ts` recusa o **host** antes de qualquer cliente existir, então nada é gravado — a validação é da URL, não da chave. Variável nova no `.env.test` precisa entrar também na lista de `tests/setup/env.ts`, porque o Vitest carrega o arquivo em `process.env` no modo `test`. O Next só carrega `.env.test` com `NODE_ENV=test`, então `next build`, `next start` e o e2e continuam usando o `.env.local`; o projeto Vitest `db` lê o arquivo direto do disco (ver **Testes contra o Supabase local**).
+
 ### Integração com o código
 
 | Arquivo | Papel |
@@ -328,7 +330,11 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `017_auditoria_alteracoes.sql` - VF-093: tabela `audit_log` (só inserção, leitura só do admin) preenchida pelo trigger `AFTER INSERT/UPDATE/DELETE` `audit_log_changes` nas 10 tabelas editáveis. Ver **Auditoria de alterações (VF-093)** em Controle de acesso. Roteiro: `017_auditoria_alteracoes_verificacao.sql`
 - `018_ordem_e_datas_futuras.sql` - VF-105 (D16, D17): CHECKs de ordem `church_clergy_dates_order_check` (`end_date ≥ start_date`), `clergy_vital_dates_order_check` (`death_date ≥ birth_date`), `schedule_events_time_order_check` e `activity_schedules_time_order_check` (`end_time > time`), com as funções imutáveis `is_clergy_date_order_valid(text, text)` e `is_schedule_time_order_valid(text, text)`, criados `not valid` e validados no fim; triggers `BEFORE INSERT OR UPDATE` `clergy_dates_not_future` e `church_clergy_dates_not_future` (função `enforce_clergy_dates_not_future()`, com `is_clergy_date_not_future(text, text)` e `clergy_today_in_maceio()`), que recusam data futura só nas colunas que mudaram. Depende da `016`. Roteiros: `018_ordem_e_datas_futuras_pre_verificacao.sql` (antes) e `018_ordem_e_datas_futuras_verificacao.sql` (depois)
 
-Roteiros de verificação manual ficam em `supabase/tests/` (ex.: `014_rls_permissoes_editor_verificacao.sql`), para rodar no SQL Editor dentro de `begin … rollback`.
+Roteiros de verificação manual ficam em `supabase/tests/` (ex.: `014_rls_permissoes_editor_verificacao.sql`), para rodar no SQL Editor dentro de `begin … rollback`. Eles **não** são pgTAP, então `supabase test db` não os reconhece.
+
+As **18 migrations aplicam do zero, em ordem**, no Supabase local: `npx supabase db reset` recria o banco e aplica `001` a `018` sem erro (conferido em 07/11/2026, CLI 2.122.0, Postgres 17). Em **produção** elas continuam sendo aplicadas à mão pelo SQL Editor (ver `supabase link`/`db push` no VF-087).
+
+Depois de um `db reset` o banco **não fica vazio**: a migration de dados `011` insere os clérigos `José Elielton da Silva` e `Denis Francisco Menezes` mesmo sem o seed, porque o `where not exists` olha só o nome do clérigo (a `013` depois atualiza a bio dessas linhas). O vínculo com a paróquia não entra (depende do `slug`), então as duas linhas ficam sem igreja. Nada quebra, mas teste no banco local não pode supor `clergy` vazia, nem usar `count(*)` sem filtro.
 
 ### `/scripts`
 
@@ -338,22 +344,88 @@ Roteiros de verificação manual ficam em `supabase/tests/` (ex.: `014_rls_permi
 
 ### Testes e CI
 
-Stack definida na D9. Nenhum teste grava no Supabase; os que precisarem gravar dados vão rodar no Supabase local (D10, ainda não configurado).
+Stack definida na D9. Nenhum teste grava no Supabase de **produção**: quem grava dados roda no **Supabase local** (D10), no projeto Vitest `db`.
 
 | Camada | Onde | Comando | Ambiente |
 |--------|------|---------|----------|
 | Unitário | `<arquivo>.test.ts` ao lado do código (hoje `lib/utils/`) | `npm run test:unit` | Vitest, node |
 | Integração | `<arquivo>.integration.test.ts(x)` ao lado do código (`features/`, `lib/supabase/queries/`) | `npm run test:integration` | Vitest + Testing Library, jsdom; queries com `// @vitest-environment node` |
+| Banco (RLS e triggers) | `tests/db/*.db.test.ts` | `npm run test:db` | Vitest, node, Supabase **local** (Docker). **Opt-in**, fora do `npm test` e do CI |
 | E2E | `tests/e2e/*.spec.ts` | `npm run test:e2e` | Playwright, Chromium, `next start` na porta 3203 |
 
-- [`vitest.config.mts`](../../vitest.config.mts): dois projetos (`unit` e `integration`) e o alias `@/` igual ao do `tsconfig`. Unitário é sempre `.ts`; teste que renderiza componente é integração.
+- [`vitest.config.mts`](../../vitest.config.mts): três projetos (`unit`, `integration` e `db`) e o alias `@/` igual ao do `tsconfig`. Unitário é sempre `.ts`; teste que renderiza componente é integração.
 - [`playwright.config.ts`](../../playwright.config.ts): sobe `npm run build && npm run start -- -p 3203`; `E2E_SKIP_BUILD=1` reaproveita o `.next`, `E2E_PORT` troca a porta e `E2E_REUSE_SERVER=1` usa um servidor já aberto (desligado por padrão, porque outra worktree pode estar na porta).
 - `tests/setup/env.ts`: apaga as variáveis do Supabase antes dos testes do Vitest, para que nenhum teste alcance o banco real (local e CI se comportam igual).
 - `tests/setup/dom.ts`: matchers do jest-dom, `cleanup` entre testes e stubs de APIs que o jsdom não tem (usadas pelo Radix).
 - `tests/fixtures/domain.ts`: `makeChurch`, `makeClergy`, `makeClergyWithChurch`.
 - `tests/fixtures/supabase.ts`: **cliente Supabase simulado único** (VF-107), para queries públicas, Server Actions e o `AuthProvider`. `createFakeSupabaseClient({ responses, user, signInError, signOutError })`: `responses` mapeia tabela → resposta, com valor único (vale para todo `from`) ou array (fila, cada `from` consome a próxima); consultar tabela sem resposta, ou esgotar a fila, lança, para cenário incompleto não virar sucesso vazio. A resposta é `{ data, error }` (atalho `ok(data)`) ou `{ reject: Error }`, que simula o `fetch` rejeitado; `user`, `signInError` e `signOutError` configuram o `auth` simulado (`getUser`, `signInWithPassword`, `signOut`, `onAuthStateChange`). Qualquer cadeia de filtros resolve com a resposta da tabela: `client.tables` lista as tabelas consultadas, `client.queries` traz uma entrada por `from` com a cadeia de chamadas, e os helpers `callsTo(client, tabela, método)`, `findQueries(client, tabela, método)` e `argsOf(query, método)` conferem filtros e o que seria gravado. `mockPublicClient(respostasPorTabela)` é o atalho para leitura pública, com `vi.mock("@/lib/supabase/public")`; para `lib/supabase/server` e `lib/supabase/client`, o teste declara o próprio `vi.mock` e injeta o cliente. Consulta aninhada (ex.: `getChurchBySlug`) responde pela tabela raiz, com as relações embutidas na própria linha: em `churches.integration.test.ts`, `churchPageRow()` monta a igreja com `schedule_events`, `activities`, `church_clergy` e `church_ministries`, e `mockChurchPage(sobrescritas)` / `mockChurchPageResponse(resposta)` configuram o cliente.
 - [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml): em PR e push para `develop` e `main`. Jobs: `quality` (lint, tipos, unitários, integração; sem secrets), `supabase-env` (falha com mensagem clara se faltarem os secrets), `build` (envia o `.next` como artefato) e `e2e` (reaproveita o build; cache dos browsers do Playwright). Secrets do repositório: `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (chave pública, nunca a `service_role`).
-- `.gitignore` ignora só `.github/copilot-instructions.md` (VF-062); o restante de `.github/` é versionado.
+- `.gitignore`: de `.github/`, ignora só `.github/copilot-instructions.md` (VF-062) — o restante é versionado. Também ignora `.env*.local` e `.env.test*` (VF-098).
+
+### Testes contra o Supabase local (VF-098, D10)
+
+O projeto Vitest `db` fala com o Postgres do Supabase local de verdade: é onde ficam as regras que só o banco garante (RLS, triggers, constraints), impossíveis de verificar com cliente simulado.
+
+**Como rodar** (Docker Desktop aberto; CLI do Supabase vem como devDependency):
+
+```bash
+npx supabase start     # sobe o stack local (54321 API, 54322 Postgres, 54323 Studio)
+npm run test:db:env    # gera o .env.test (só na primeira vez, ou se as chaves mudarem)
+npx supabase db reset  # recria o banco e aplica as 18 migrations do zero
+npm run test:db        # roda tests/db/*.db.test.ts
+npx supabase stop      # ao terminar
+```
+
+`supabase start` já aplica as migrations na primeira subida; `db reset` serve para voltar a um banco limpo. Sem o stack no ar, ou sem o `.env.test`, o `test:db` falha no `globalSetup` com a instrução de qual comando rodar.
+
+**O `.env.test` é gerado, não versionado.** O `test:db:env` roda `supabase status -o env` e renomeia as três variáveis que o projeto espera, porque os nomes do CLI são outros:
+
+| Nome no CLI | Nome no `.env.test` |
+|-------------|---------------------|
+| `API_URL` | `NEXT_PUBLIC_SUPABASE_URL` |
+| `ANON_KEY` | `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
+| `SERVICE_ROLE_KEY` | `SUPABASE_SERVICE_ROLE_KEY` |
+
+Para fazer à mão, é o mesmo que o script faz (`--override-name` aceita `api.url`, `auth.anon_key` e `auth.service_role_key`):
+
+```bash
+npx supabase status -o env \
+  --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+  --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
+  --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
+  | grep -E '^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY)=' \
+  > .env.test
+```
+
+O `grep` não é enfeite: `status -o env` também imprime `DB_URL`, `JWT_SECRET` e as chaves do S3, e tudo que estiver no `.env.test` o Vitest carrega em `process.env` no modo `test`. Ficar só nas três mantém o apagamento de `tests/setup/env.ts` cobrindo o arquivo inteiro. O `--override-name` **exige** o `-o env` (sem ele o CLI recusa com `--override-name requires --env.`) e valida as chaves contra o que o stack exporta, então nome errado aborta o comando em vez de gerar arquivo pela metade. `tests/db/env.ts` aceita `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no lugar de `ANON_KEY`, na mesma ordem de preferência de `lib/supabase/env.ts`.
+
+**Opt-in, de propósito.** O projeto `db` só existe com `VITEST_DB=1`, que o script `test:db` define. Sem a variável, `npm test`, `npm run test:unit`, `npm run test:integration` e `npm run test:watch` não enxergam o projeto — o CI de hoje não tem Docker e passaria a falhar. Um job de CI com `supabase/setup-cli` é item separado do board.
+
+**Arquivos:**
+
+| Arquivo | Papel |
+|---------|-------|
+| `.env.test` | URL e chaves do Supabase local. **Não versionado**; gerado por `npm run test:db:env` |
+| `tests/db/env.ts` | Lê o `.env.test` do disco e **recusa** URL que não seja `127.0.0.1`/`localhost`/`::1`. Com o arquivo gerado por máquina, é a única barreira contra apontar para produção |
+| `tests/db/client.ts` | `createAnonTestClient`, `signInAsTestUser` (papel `authenticated`) e `createServiceRoleTestClient` (só para montar e limpar cenário) |
+| `tests/db/seed.ts` | Seed mínimo e idempotente: 2 igrejas (uma vinculada ao editor), 1 clérigo com vínculo, 1 ministério no catálogo **sem** vínculo, horários e atividades nas duas igrejas, 1 admin e 1 editor vinculado no Auth. Limpa pelo prefixo `Teste VF-098` e pelo domínio `@viafidei.test` |
+| `tests/db/global-setup.ts` | Confere que o banco está no ar e migrado e roda o seed uma vez por execução |
+| `tests/db/rls-editor.db.test.ts` | Permissões do editor (`008` + `014`): D3, D11, D14 e a contraparte no banco da D15 (o editor não grava clero). A parte de UI da D15 é do VF-104 |
+| `tests/db/profiles-privilege-escalation.db.test.ts` | Trigger da `010`: usuário não se autopromove a admin |
+
+**Decisões de desenho:**
+
+- O seed é **separado** do `npm run seed`, que lê `data/*.ts` e aponta para produção. `npm run seed` e `npm run bootstrap-users` nunca são usados pelos testes.
+- `tests/db/env.ts` lê o arquivo com `dotenv.parse`, não `process.env`: assim o `tests/setup/env.ts` continua apagando as variáveis do Supabase e nenhum teste alcança produção, nem por `lib/supabase/*`.
+- Os arquivos do projeto `db` rodam em **série** (`fileParallelism: false`), porque compartilham um banco só.
+- Como as recusas aparecem na API, e por que as asserções diferem:
+
+| Origem da recusa | Resposta do PostgREST |
+|------------------|----------------------|
+| Trigger (`raise exception` com `42501`) nas `010` e `014` | Erro `error.code === "42501"` com a mensagem da migration |
+| RLS no UPDATE ou DELETE | **Sem erro**, nenhuma linha atingida (`data` é lista vazia) |
+| RLS no INSERT | Erro `42501` ("new row violates row-level security policy") |
+| CHECK das `016`/`018` | Erro `23514`; a `018` repete o nome da constraint em `error.details` |
 
 ## Fluxo de dados
 
