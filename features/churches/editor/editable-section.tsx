@@ -1,12 +1,15 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/features/auth/use-auth";
+import type { ChurchDataKind } from "@/features/auth/types";
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface EditableSectionProps {
   churchId: string;
+  /** Tipo de dado da seção: decide quem vê o "Adicionar" (D3). */
+  kind: ChurchDataKind;
   hasContent: boolean;
   emptyMessage: string;
   addLabel: string;
@@ -16,15 +19,16 @@ interface EditableSectionProps {
 
 export function EditableSection({
   churchId,
+  kind,
   hasContent,
   emptyMessage,
   addLabel,
   onAdd,
   children,
 }: EditableSectionProps) {
-  const { canEditChurch, isLoading } = useAuth();
+  const { canEditChurchData, isLoading } = useAuth();
 
-  const canEdit = !isLoading && canEditChurch(churchId);
+  const canEdit = !isLoading && canEditChurchData(churchId, kind);
 
   if (hasContent) {
     return <>{children}</>;

@@ -1,4 +1,4 @@
-import type { UserRole } from "./types";
+import type { ChurchDataKind, UserRole } from "./types";
 
 /**
  * Regras de acesso derivadas do perfil (`profiles.role` e `profiles.is_active`).
@@ -56,6 +56,33 @@ export function canEditChurch(
   if (isActiveAdmin(profile)) return true;
   if (isActiveEditor(profile)) return linkedChurchIds.includes(churchId);
   return false;
+}
+
+/**
+ * Dados que só o admin altera, mesmo na igreja vinculada (D3 e D15): a
+ * identidade da igreja (nome, slug, endereço, bairro, tipo) e o clero
+ * (cadastro de clérigos e vínculos). Tipo novo entra aqui ou fica liberado
+ * para o editor da igreja — sem `if` espalhado pela UI.
+ */
+const ADMIN_ONLY_CHURCH_DATA: ReadonlySet<ChurchDataKind> = new Set([
+  "identity",
+  "clergy",
+]);
+
+/**
+ * Permissão por tipo de dado (VF-104). O admin ativo edita tudo; o editor
+ * ativo edita, nas igrejas vinculadas, só o que a D3/D11/D14 lhe dão. O banco
+ * aplica a mesma regra (migration `014`); aqui é só o que a UI mostra.
+ */
+export function canEditChurchData(
+  profile: ProfileAccess | null,
+  linkedChurchIds: readonly string[],
+  churchId: string,
+  kind: ChurchDataKind,
+): boolean {
+  if (isActiveAdmin(profile)) return true;
+  if (ADMIN_ONLY_CHURCH_DATA.has(kind)) return false;
+  return canEditChurch(profile, linkedChurchIds, churchId);
 }
 
 /**

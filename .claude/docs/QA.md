@@ -59,7 +59,8 @@ npm run test:e2e          # smoke das páginas públicas (Playwright, Chromium, 
 | CT-010 | `church-contact-section.integration.test.tsx` | `target="_blank"` e `rel="noopener noreferrer"` nos contatos |
 | CT-011 | `tests/e2e/public-pages.spec.ts`, `features/auth/actions.integration.test.ts`, `features/auth/access.test.ts` | `/login` renderiza com `noindex`; `/admin` sem sessão vai para `/login`; login recusa perfil desativado (ou sem perfil) e encerra a sessão; destino por papel |
 | CT-012 | `features/auth/admin-actions.integration.test.ts`, `features/auth/admin-validation.test.ts` | Validação da entrada das actions de admin (email, nome, senha, UUIDs); alvo só `role = 'editor'`; `createEditor` ativa o perfil explicitamente |
-| CT-013 | `features/auth/auth-provider.integration.test.tsx`, `features/auth/access.test.ts` | `canEditChurch` só para perfil ativo; perfil desativado tem a sessão encerrada no `AuthProvider` |
+| CT-013 | `features/auth/auth-provider.integration.test.tsx`, `features/churches/editor/editor-permissions.integration.test.tsx`, `app/igreja/[slug]/page.integration.test.tsx`, `features/auth/access.test.ts` | Permissão só para perfil ativo e **por tipo de dado** (`canEditChurchData`: identidade da igreja e clero só do admin); perfil desativado tem a sessão encerrada no `AuthProvider`; lápis e "Adicionar" por seção da página da igreja |
+| Sessão no cliente (VF-085) | `features/auth/auth-provider.integration.test.tsx`, `features/auth/session-cookie.test.ts` | Carregamento único no `INITIAL_SESSION`; `SIGNED_IN` da mesma sessão e `TOKEN_REFRESHED` não recarregam; recarga em troca de usuário e no `USER_UPDATED`; `SIGNED_OUT` limpa sem reconsultar; erro de rede, do Auth e dos vínculos deixam a UI como visitante com registro no console; prazo de desistência; supabase-js só baixado com cookie de sessão (incluindo o quase-homônimo do PKCE) |
 | 404 | `tests/e2e/public-pages.spec.ts` | `/igreja/nao-existe` responde 404 com "Igreja não encontrada" |
 | Ícones (VF-090) | `tests/e2e/icons.spec.ts` | O `<head>` aponta `icon` e `apple-touch-icon` para `/icon.png` (32x32) e `/apple-icon.png` (180x180), nenhum `<link>` para o logo; ícones e logo respondem 200 como PNG e leves (até 5 KB, 15 KB e 50 KB) |
 | Erro (VF-092) | `app/error.integration.test.tsx`, `app/global-error.integration.test.tsx`, `features/theme/theme-script.integration.test.ts` | Mensagem para o fiel sem `error.message`; "Tentar novamente" chama `router.refresh()` e `reset()`; só o `digest` vai para o console; `global-error` com `lang="pt-BR"` e tema escuro salvo; script de tema autossuficiente |
@@ -327,12 +328,19 @@ Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getChurchBySlug`, 
 
 **Comportamento esperado:**
 
-- [ ] Na igreja vinculada: lápis nas seções; sem "Gerenciar editores"
+- [ ] Na igreja vinculada: lápis nas seções **Contato**, **Horários** e **Grupos, Movimentos e Pastorais**; sem "Gerenciar editores"
+- [ ] Na igreja vinculada, pela D3 e D15: **nenhum lápis no nome da igreja** e **nenhum lápis nem "Adicionar clérigo" na seção Clero** — o editor vê o Clero como o visitante
 - [ ] Em igreja não vinculada: nenhum controle de edição (igual ao visitante)
 - [ ] `/admin` redireciona para `/`
 - [ ] Pela API (sessão do editor), `update profiles set role = 'admin'` ou `is_active` na própria linha falha com `42501`; alterar o próprio `name` funciona
 - [ ] Permissões da D3 no banco (migration `014`): rodar `supabase/tests/014_rls_permissoes_editor_verificacao.sql` no SQL Editor; deve terminar sem erro (OK 1 a OK 7, com o 4b) e não grava nada. Cobre: editor altera contato, foto e link do Maps da igreja vinculada; não altera nome, slug, endereço, bairro nem tipo (`42501`); não mexe em `church_clergy`, `clergy` nem no catálogo `ministries`; não cria nem apaga igreja; não altera igreja não vinculada; continua gerenciando horários, atividades e grupos/movimentos/pastorais; admin altera tudo
-- [ ] Divergência conhecida da UI: o editor ainda vê o lápis no nome da igreja e na seção Clero (`canEditChurch` vale para a igreja inteira); a gravação é recusada pelo banco
+- [ ] Logado como **admin**, na mesma igreja: lápis em **todas** as seções, inclusive nome da igreja e Clero, mais o atalho "Gerenciar editores"
+- [ ] Visitante anônimo (janela anônima): nenhum controle de edição e **nenhuma requisição ao Supabase Auth** na aba Network (o `AuthProvider` só baixa o supabase-js quando há cookie de sessão, VF-085)
+- [ ] Logo após o login, sem recarregar a página: o editor navega para a igreja vinculada e **já** vê os lápis permitidos (o provider reencontra a sessão na troca de rota)
+- [ ] Duas abas logadas na mesma igreja: alternar o foco entre elas **não** gera nova consulta a `profiles` nem a `editor_churches` na aba Network (VF-085 — o `auth-js` emite `SIGNED_IN` a cada volta do foco, e a deduplicação por usuário ignora)
+- [ ] Editor desativado pelo admin com a aba já aberta: os lápis só desaparecem no próximo carregamento da página (o RLS é quem recusa a gravação nesse intervalo)
+
+> A divergência antiga (editor vendo o lápis no nome da igreja e na seção Clero) foi corrigida no VF-104; a gravação já era recusada pelo banco (`014`).
 
 ---
 

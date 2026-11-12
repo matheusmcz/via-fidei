@@ -124,7 +124,7 @@ export default async function ChurchDetailPage({
               <div className="flex items-start justify-between">
                 <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
                   {church.name}
-                  <EditIndicator churchId={church.id} />
+                  <EditIndicator churchId={church.id} kind="identity" />
                 </h1>
                 <AdminChurchLink churchId={church.id} />
               </div>
@@ -168,10 +168,11 @@ export default async function ChurchDetailPage({
             <CardContent className="p-6 sm:p-8">
               <h2 className="text-xl font-semibold mb-4">
                 Contato
-                <EditIndicator churchId={church.id} />
+                <EditIndicator churchId={church.id} kind="contact" />
               </h2>
               <EditableSection
                 churchId={church.id}
+                kind="contact"
                 hasContent={!!church.contact}
                 emptyMessage="Nenhuma informação de contato disponível."
                 addLabel="Adicionar contato"
@@ -186,10 +187,11 @@ export default async function ChurchDetailPage({
             <CardContent className="p-6 sm:p-8">
               <h2 className="text-xl font-semibold mb-4">
                 Clero
-                <EditIndicator churchId={church.id} />
+                <EditIndicator churchId={church.id} kind="clergy" />
               </h2>
               <EditableSection
                 churchId={church.id}
+                kind="clergy"
                 hasContent={!!church.clergy && church.clergy.length > 0}
                 emptyMessage="Nenhum clérigo cadastrado."
                 addLabel="Adicionar clérigo"
@@ -205,10 +207,11 @@ export default async function ChurchDetailPage({
             <CardContent className="p-6 sm:p-8">
               <h2 className="text-xl font-semibold mb-4">
                 Horários
-                <EditIndicator churchId={church.id} />
+                <EditIndicator churchId={church.id} kind="schedule" />
               </h2>
               <EditableSection
                 churchId={church.id}
+                kind="schedule"
                 hasContent={
                   !!(church.masses?.length ||
                     church.adorations?.length ||
@@ -228,10 +231,11 @@ export default async function ChurchDetailPage({
             <CardContent className="p-6 sm:p-8">
               <h2 className="text-xl font-semibold mb-4">
                 Grupos, Movimentos e Pastorais
-                <EditIndicator churchId={church.id} />
+                <EditIndicator churchId={church.id} kind="ministries" />
               </h2>
               <EditableSection
                 churchId={church.id}
+                kind="ministries"
                 hasContent={!!church.ministries}
                 emptyMessage="Nenhum grupo, movimento ou pastoral cadastrado."
                 addLabel="Adicionar ministério"

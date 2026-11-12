@@ -6,4 +6,9 @@ export {
   toggleEditorActive,
   updateEditorChurches,
 } from "./admin-actions";
-export type { AuthContextValue, UserProfile, UserRole } from "./types";
+export type {
+  AuthContextValue,
+  ChurchDataKind,
+  UserProfile,
+  UserRole,
+} from "./types";

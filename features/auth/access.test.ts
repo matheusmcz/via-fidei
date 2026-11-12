@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canEditChurch,
+  canEditChurchData,
   getLoginOutcome,
   INACTIVE_PROFILE_MESSAGE,
   isActiveAdmin,
@@ -82,6 +83,50 @@ describe("canEditChurch", () => {
 
   it("visitante não edita", () => {
     expect(canEditChurch(null, linked, "igreja-vinculada")).toBe(false);
+  });
+});
+
+describe("canEditChurchData", () => {
+  const CHURCH = "igreja-vinculada";
+  const linked = [CHURCH];
+  const editorData = ["contact", "schedule", "ministries"] as const;
+  const adminOnlyData = ["identity", "clergy"] as const;
+
+  it("admin ativo edita todo tipo de dado de qualquer igreja", () => {
+    for (const kind of [...editorData, ...adminOnlyData]) {
+      expect(canEditChurchData(activeAdmin, [], "qualquer-igreja", kind)).toBe(
+        true,
+      );
+    }
+  });
+
+  it("editor vinculado edita contato, horários e ministérios (D3, D11, D14)", () => {
+    for (const kind of editorData) {
+      expect(canEditChurchData(activeEditor, linked, CHURCH, kind)).toBe(true);
+    }
+  });
+
+  it("editor vinculado não edita identidade nem clero (D3, D15)", () => {
+    for (const kind of adminOnlyData) {
+      expect(canEditChurchData(activeEditor, linked, CHURCH, kind)).toBe(false);
+    }
+  });
+
+  it("editor não edita nada em igreja não vinculada", () => {
+    for (const kind of [...editorData, ...adminOnlyData]) {
+      expect(canEditChurchData(activeEditor, linked, "outra-igreja", kind)).toBe(
+        false,
+      );
+    }
+  });
+
+  it("editor desativado e visitante não editam nada", () => {
+    for (const kind of [...editorData, ...adminOnlyData]) {
+      expect(canEditChurchData(inactiveEditor, linked, CHURCH, kind)).toBe(
+        false,
+      );
+      expect(canEditChurchData(null, linked, CHURCH, kind)).toBe(false);
+    }
   });
 });
 
