@@ -348,6 +348,32 @@ describe("AuthProvider", () => {
     }
   });
 
+  it("evento que chega depois do prazo ainda carrega a sessão", async () => {
+    vi.useFakeTimers();
+    try {
+      const client = mockBrowserClient({
+        ...linkedEditor(),
+        emitInitialSession: false,
+      });
+      renderProvider();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+      expect(screen.getByText("autenticado: false")).toBeInTheDocument();
+
+      // O `auth-js` conseguiu o lock depois do prazo: a tela se corrige.
+      await act(async () => {
+        authListener(client)("INITIAL_SESSION", SESSION);
+      });
+
+      expect(screen.getByText("contato: true")).toBeInTheDocument();
+      expect(screen.getByText("autenticado: true")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("o prazo de desistência não derruba a sessão já carregada", async () => {
     vi.useFakeTimers();
     try {

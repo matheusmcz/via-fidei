@@ -163,10 +163,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // atrasado ainda carrega a sessão e corrige a tela.
     const giveUp = setTimeout(() => {
       if (knownUserId !== undefined) return;
-      reportAuthError(
-        new Error(
-          `nenhum evento de sessão em ${SESSION_EVENT_TIMEOUT_MS} ms; seguindo como visitante`,
-        ),
+      reportAuthProblem(
+        `nenhum evento de sessão em ${SESSION_EVENT_TIMEOUT_MS} ms; seguindo como visitante.`,
       );
       apply(++lastLoad, SIGNED_OUT);
     }, SESSION_EVENT_TIMEOUT_MS);
@@ -250,10 +248,14 @@ async function readAuthState(supabase: BrowserClient): Promise<AuthState> {
   };
 }
 
-/** Deixa o erro visível no console do navegador, sem detalhe na tela. */
+/** Deixa o problema visível no console do navegador, sem detalhe na tela. */
+function reportAuthProblem(message: string) {
+  console.error(`Via Fidei: ${message}`);
+}
+
 function reportAuthError(error: unknown) {
-  console.error(
-    `Via Fidei: falha ao carregar a sessão do usuário. ${describeError(error)}`,
+  reportAuthProblem(
+    `falha ao carregar a sessão do usuário. ${describeError(error)}`,
   );
 }
 
