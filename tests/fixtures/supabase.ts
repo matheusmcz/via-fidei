@@ -123,6 +123,12 @@ export interface FakeSupabaseOptions {
   user?: { id: string } | null;
   /** Erro devolvido por `auth.getUser()` (ex.: Auth fora do ar). */
   userError?: { message: string } | null;
+  /**
+   * `false` deixa o ouvinte de `onAuthStateChange` sem o `INITIAL_SESSION`
+   * automático, para simular a entrega que o `auth-js` não garante (Web Lock
+   * disputado, inicialização que rejeita). Padrão: emite.
+   */
+  emitInitialSession?: boolean;
   /** Erro devolvido por `auth.signInWithPassword()`. */
   signInError?: { message: string } | null;
   /** Erro devolvido por `auth.signOut()`. */
@@ -196,7 +202,9 @@ function createFakeAuth(options: FakeSupabaseOptions) {
       let subscribed = true;
       const session = options.user ? { user: options.user } : null;
       void Promise.resolve().then(() => {
-        if (subscribed) listener("INITIAL_SESSION", session);
+        if (subscribed && options.emitInitialSession !== false) {
+          listener("INITIAL_SESSION", session);
+        }
       });
       return {
         data: {

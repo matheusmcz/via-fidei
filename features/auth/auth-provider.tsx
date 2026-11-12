@@ -51,6 +51,18 @@ const SESSION_EVENTS: ReadonlySet<string> = new Set([
   "USER_UPDATED",
 ]);
 
+/**
+ * Prazo para o primeiro evento chegar, antes de a UI desistir e seguir como
+ * visitante. Existe porque a entrega do `INITIAL_SESSION` não é garantida: ela
+ * roda em uma IIFE sem `catch` dentro do `auth-js`, que espera a inicialização
+ * e depois um Web Lock com prazo de 5 s (`lockAcquireTimeout`) — abas
+ * disputando o lock, ou uma inicialização que rejeite, deixariam o provider
+ * preso em "carregando" para sempre. A margem é maior que esses 5 s para não
+ * atropelar uma inicialização lenta mas bem-sucedida; se o evento chegar
+ * depois do prazo, o carregamento acontece normalmente.
+ */
+const SESSION_EVENT_TIMEOUT_MS = 8_000;
+
 export const AuthContext = createContext<AuthContextValue>({
   user: null,
   isLoading: true,
@@ -146,10 +158,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Nenhum evento chegou no prazo: sai de "carregando" como visitante, com o
+    // motivo no console. `knownUserId` segue `undefined`, então um evento
+    // atrasado ainda carrega a sessão e corrige a tela.
+    const giveUp = setTimeout(() => {
+      if (knownUserId !== undefined) return;
+      reportAuthError(
+        new Error(
+          `nenhum evento de sessão em ${SESSION_EVENT_TIMEOUT_MS} ms; seguindo como visitante`,
+        ),
+      );
+      apply(++lastLoad, SIGNED_OUT);
+    }, SESSION_EVENT_TIMEOUT_MS);
+
     void start();
 
     return () => {
       active = false;
+      clearTimeout(giveUp);
       unsubscribe();
     };
   }, [hasSessionCookie]);

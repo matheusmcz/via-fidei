@@ -336,6 +336,8 @@ Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getChurchBySlug`, 
 - [ ] Logado como **admin**, na mesma igreja: lápis em **todas** as seções, inclusive nome da igreja e Clero, mais o atalho "Gerenciar editores"
 - [ ] Visitante anônimo (janela anônima): nenhum controle de edição e **nenhuma requisição ao Supabase Auth** na aba Network (o `AuthProvider` só baixa o supabase-js quando há cookie de sessão, VF-085)
 - [ ] Logo após o login, sem recarregar a página: o editor navega para a igreja vinculada e **já** vê os lápis permitidos (o provider reencontra a sessão na troca de rota)
+- [ ] Duas abas logadas na mesma igreja: alternar o foco entre elas **não** gera nova consulta a `profiles` nem a `editor_churches` na aba Network (VF-085 — o `auth-js` emite `SIGNED_IN` a cada volta do foco, e a deduplicação por usuário ignora)
+- [ ] Editor desativado pelo admin com a aba já aberta: os lápis só desaparecem no próximo carregamento da página (o RLS é quem recusa a gravação nesse intervalo)
 
 > A divergência antiga (editor vendo o lápis no nome da igreja e na seção Clero) foi corrigida no VF-104; a gravação já era recusada pelo banco (`014`).
 

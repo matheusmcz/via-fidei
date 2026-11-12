@@ -326,6 +326,52 @@ describe("AuthProvider", () => {
     expect(screen.getByText("contato: false")).toBeInTheDocument();
   });
 
+  it("desiste de carregar quando nenhum evento de sessão chega (VF-085)", async () => {
+    vi.useFakeTimers();
+    try {
+      const client = mockBrowserClient({
+        ...linkedEditor(),
+        emitInitialSession: false,
+      });
+      renderProvider();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+
+      expect(screen.getByText("autenticado: false")).toBeInTheDocument();
+      expect(screen.getByText("contato: false")).toBeInTheDocument();
+      expect(loggedErrors()).toContain("nenhum evento de sessão");
+      expect(client.tables).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("o mesmo usuário volta a ser carregado depois de um SIGNED_OUT", async () => {
+    const client = mockBrowserClient(linkedEditor());
+    renderProvider();
+
+    expect(await screen.findByText("contato: true")).toBeInTheDocument();
+
+    await act(async () => {
+      authListener(client)("SIGNED_OUT", null);
+    });
+    expect(screen.getByText("autenticado: false")).toBeInTheDocument();
+
+    await act(async () => {
+      authListener(client)("SIGNED_IN", SESSION);
+    });
+
+    expect(await screen.findByText("contato: true")).toBeInTheDocument();
+    expect(client.tables).toEqual([
+      "profiles",
+      "editor_churches",
+      "profiles",
+      "editor_churches",
+    ]);
+  });
+
   it("falha de rede deixa a UI como visitante e registra o erro", async () => {
     mockBrowserClient({
       user: { id: USER_ID },
