@@ -348,6 +348,24 @@ describe("AuthProvider", () => {
     }
   });
 
+  it("o prazo de desistência não derruba a sessão já carregada", async () => {
+    vi.useFakeTimers();
+    try {
+      mockBrowserClient(linkedEditor());
+      renderProvider();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+
+      expect(screen.getByText("contato: true")).toBeInTheDocument();
+      expect(screen.getByText("autenticado: true")).toBeInTheDocument();
+      expect(loggedErrors()).toBe("");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("o mesmo usuário volta a ser carregado depois de um SIGNED_OUT", async () => {
     const client = mockBrowserClient(linkedEditor());
     renderProvider();
