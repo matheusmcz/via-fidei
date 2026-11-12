@@ -19,8 +19,11 @@ import { vi } from "vitest";
  * - A resposta é `{ data, error }` — `ok(data)` é o atalho para `error: null` —
  *   ou `{ reject: Error }`, que simula a promessa da consulta sendo rejeitada
  *   (ex.: `fetch` falhou sem que o supabase-js convertesse a falha em `error`).
- * - `user`, `signInError` e `signOutError` configuram o `auth` simulado
- *   (`getUser`, `signInWithPassword`, `signOut`, `onAuthStateChange`).
+ * - `user`, `userError`, `signInError` e `signOutError` configuram o `auth`
+ *   simulado (`getUser`, `signInWithPassword`, `signOut`, `onAuthStateChange`).
+ *   `onAuthStateChange` entrega `INITIAL_SESSION` ao ouvinte em uma
+ *   microtarefa, como o `auth-js` faz com todo ouvinte novo; os outros eventos
+ *   o teste dispara pelo ouvinte em `mock.calls[0][0]`.
  *
  * Cada `from(tabela)` devolve um query builder que aceita qualquer cadeia de
  * filtros (`select`, `eq`, `order`, `update`, `maybeSingle`…) e, ao ser
@@ -118,6 +121,8 @@ export interface FakeSupabaseOptions {
   responses?: FakeTableResponses;
   /** Usuário devolvido por `auth.getUser()`; ausente ou `null` = sem sessão. */
   user?: { id: string } | null;
+  /** Erro devolvido por `auth.getUser()` (ex.: Auth fora do ar). */
+  userError?: { message: string } | null;
   /** Erro devolvido por `auth.signInWithPassword()`. */
   signInError?: { message: string } | null;
   /** Erro devolvido por `auth.signOut()`. */
@@ -174,7 +179,7 @@ function createFakeAuth(options: FakeSupabaseOptions) {
   return {
     getUser: vi.fn(async () => ({
       data: { user: options.user ?? null },
-      error: null,
+      error: options.userError ?? null,
     })),
     signInWithPassword: vi.fn(async () => ({
       data: {},
@@ -183,11 +188,26 @@ function createFakeAuth(options: FakeSupabaseOptions) {
     signOut: vi.fn(async (_options?: { scope?: string }) => ({
       error: options.signOutError ?? null,
     })),
-    // O ouvinte é tipado para que o teste alcance `mock.calls[0][0]` e dispare
-    // os eventos de sessão (`SIGNED_IN`, `TOKEN_REFRESHED`…) por conta própria.
-    onAuthStateChange: vi.fn((_listener: FakeAuthListener) => ({
-      data: { subscription: { unsubscribe: vi.fn() } },
-    })),
+    // Como o `auth-js`: todo ouvinte novo recebe `INITIAL_SESSION` com a sessão
+    // atual, em uma microtarefa (`_emitInitialSession`). É esse evento que faz
+    // o carregamento da montagem no `AuthProvider`. Os demais eventos ficam
+    // com o teste, que alcança o ouvinte por `mock.calls[0][0]` — daí o tipo.
+    onAuthStateChange: vi.fn((listener: FakeAuthListener) => {
+      let subscribed = true;
+      const session = options.user ? { user: options.user } : null;
+      void Promise.resolve().then(() => {
+        if (subscribed) listener("INITIAL_SESSION", session);
+      });
+      return {
+        data: {
+          subscription: {
+            unsubscribe: vi.fn(() => {
+              subscribed = false;
+            }),
+          },
+        },
+      };
+    }),
   };
 }
 

@@ -171,19 +171,20 @@ Cada feature agrupa componentes, hooks e lógica relacionados.
 
 **`/features/churches/editor`** - Experiência de edição na página de igreja
 
-- `editable-section.tsx` - Wrapper que exibe empty state + botão "Adicionar" para editores vinculados
-- `edit-indicator.tsx` - Ícone de lápis exibido condicionalmente para quem pode editar
+- `editable-section.tsx` - Wrapper que exibe empty state + botão "Adicionar" para quem pode editar **aquele tipo de dado** (prop `kind`, D3)
+- `edit-indicator.tsx` - Ícone de lápis exibido para quem pode editar **aquele tipo de dado** (prop `kind`, D3)
 - `admin-church-link.tsx` - Link para gerenciar editores (visível apenas para admin)
 
 **`/features/auth`** - Autenticação e controle de acesso
 
-- `auth-provider.tsx` - Provider com estado do usuário, papel e igrejas vinculadas
+- `auth-provider.tsx` - Provider com estado do usuário, papel e igrejas vinculadas. Carrega a sessão uma vez, pelos eventos do `onAuthStateChange` com deduplicação por usuário, e importa o supabase-js só quando há cookie de sessão (VF-085)
 - `use-auth.ts` - Hook para acessar contexto de autenticação
-- `access.ts` - Regras puras de acesso pelo perfil: destino do login, `canEditChurch`, admin/editor ativo e alvo das ações de admin (só `role = 'editor'`)
+- `access.ts` - Regras puras de acesso pelo perfil: destino do login, `canEditChurch`, `canEditChurchData` + `ADMIN_ONLY_CHURCH_DATA` (permissão por tipo de dado, D3), admin/editor ativo e alvo das ações de admin (só `role = 'editor'`)
+- `session-cookie.ts` - `hasAuthTokenCookie`: regra pura que reconhece o cookie de sessão do `@supabase/ssr` (VF-085)
 - `actions.ts` - Server Actions de login/logout
 - `admin-actions.ts` - Server Actions para gestão de editores (admin)
 - `admin-validation.ts` - Schemas zod e funções puras de validação da entrada das actions de admin
-- `types.ts` - Tipos (UserRole, UserProfile, AuthContextValue)
+- `types.ts` - Tipos (UserRole, UserProfile, AuthContextValue, ChurchDataKind)
 
 **`/features/admin`** - Área administrativa
 
@@ -557,8 +558,8 @@ Toda gravação em `churches`, `schedule_events`, `activities`, `activity_schedu
 - **Login:** `/login` (rota sem link na UI). Email/senha via Supabase Auth (`signInWithPassword`); redirecionamento: admin → `/admin`, editor → `/` (`getLoginOutcome` em `features/auth/access.ts`).
 - **Perfil desativado não entra (VF-013):** com `is_active = false` (ou perfil que não carrega), o `login` encerra a sessão aberta pelo `signInWithPassword` (perfil desativado: `scope: 'global'`, derruba todos os dispositivos; perfil que não carrega: `scope: 'local'`, só esta sessão) e mostra "Esta conta está desativada. Fale com o administrador do Via Fidei para reativá-la." no formulário. Sessão aberta antes da desativação: o `AuthProvider` encerra a sessão (`signOut`) ao carregar um perfil inativo, e `canEditChurch`, `isAdmin` e `isEditor` exigem perfil ativo. O RLS já barrava a escrita (`is_admin()` e `is_editor_of()` exigem `is_active`), e o `app/admin/layout.tsx` já recusava admin inativo.
 - **Sessão:** cookies + `@supabase/ssr`; `middleware.ts` na raiz renova tokens; `AuthProvider` + `useAuth` no cliente para papel e igrejas vinculadas.
-- **Carregamento da sessão no cliente (VF-085):** o `AuthProvider` carrega perfil e vínculos **uma vez** e só repete nos eventos que mudam quem está logado — `SIGNED_IN`, `SIGNED_OUT` e `USER_UPDATED`. `INITIAL_SESSION` e `TOKEN_REFRESHED` são ignorados de propósito (o primeiro repetiria o carregamento da montagem; o segundo recarregaria tudo a cada renovação de token). Cada carregamento é numerado: uma resposta atrasada não desfaz um logout posterior. Erro de rede ou do Supabase é registrado no console e deixa a UI no estado de visitante (sem controle de edição), que é o seguro.
-- **supabase-js fora do bundle do visitante (VF-085):** o provider fica no layout raiz, mas só importa `lib/supabase/client` (`import()` dinâmico) quando encontra o cookie de sessão do `@supabase/ssr` (`sb-<ref>-auth-token`, que pode vir fatiado em `.0`, `.1`…) em `document.cookie`. A sondagem repete a cada mudança de rota (`usePathname`), porque o login acontece em `/login` e o layout raiz não remonta na volta. Resultado no `npm run build`: as páginas públicas caíram de **222 kB** para **167 kB** de First Load JS e continuam estáticas com ISR (`revalidate = 60`) — o layout raiz **não** pode ler `cookies()`, que as tornaria dinâmicas.
+- **Carregamento da sessão no cliente (VF-085):** o `AuthProvider` carrega perfil e vínculos **uma vez**, pelo `INITIAL_SESSION` que o `auth-js` entrega a todo ouvinte novo — não há mais a chamada direta na montagem, que era a segunda fonte do carregamento em dobro. Depois disso, só recarrega quando a **identidade da sessão muda**: `SIGNED_IN` com outro `user.id`, `USER_UPDATED` (o próprio usuário mudou) ou `SIGNED_OUT` (limpa). `TOKEN_REFRESHED` é ignorado. A deduplicação é por `user.id`, e não por nome de evento, porque o `auth-js` emite `SIGNED_IN` também ao recuperar a sessão do storage (`_recoverAndRefresh`), **a cada vez que a aba volta a ficar visível** (`_onVisibilityChanged`) e ao replicar o evento para as outras abas (`BroadcastChannel`) — filtrar por nome deixaria o perfil sendo rebuscado a cada troca de foco. Cada carregamento é numerado: uma resposta atrasada não desfaz um logout posterior. Erro de rede ou do Supabase é registrado no console, deixa a UI no estado de visitante (sem controle de edição, que é o seguro) e **esquece** o usuário carregado, para que o evento seguinte tente de novo.
+- **supabase-js fora do bundle do visitante (VF-085):** o provider fica no layout raiz, mas só importa `lib/supabase/client` (`import()` dinâmico) quando `hasAuthTokenCookie` (`features/auth/session-cookie.ts`) encontra o cookie de sessão do `@supabase/ssr` (`sb-<ref>-auth-token`, que pode vir fatiado em `.0`, `.1`…) em `document.cookie`. A regra é pura e testada, inclusive contra o quase-homônimo `...-auth-token-code-verifier` do PKCE, e o arquivo registra as suposições sobre a biblioteca (nome do cookie e `httpOnly: false`) — é o primeiro lugar a olhar se o editor logado parar de ver os lápis. A sondagem repete a cada mudança de rota (`usePathname`), porque o login acontece em `/login` e o layout raiz não remonta na volta. Resultado no `npm run build`: as páginas públicas caíram de **222 kB** para **167 kB** de First Load JS e continuam estáticas com ISR (`revalidate = 60`) — o layout raiz **não** pode ler `cookies()`, que as tornaria dinâmicas.
 - **Perfis:** tabela `profiles` (roles `admin` | `editor`), trigger `handle_new_user()` ao criar usuário em `auth.users`. Desde a `015` (VF-082) o perfil nasce **sem permissão**: `role = 'editor'` e `is_active = false`. Só fica ativo quando o admin cria o editor pelo painel (`createEditor`) ou o `bootstrap-users` roda; um usuário criado pelo Dashboard ou por cadastro público não acessa nada até ser ativado em `/admin/usuarios/[id]`.
 - **Primeiro admin:** `npm run bootstrap-users` (ou criar no Dashboard e `update profiles set role = 'admin'` no SQL Editor).
 - **Logout:** action `logout` existe em `features/auth/actions.ts`, mas nenhuma tela a usa.

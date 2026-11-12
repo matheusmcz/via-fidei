@@ -14,6 +14,7 @@ import {
   isActiveEditor,
   isDeactivated,
 } from "./access";
+import { hasAuthTokenCookie } from "./session-cookie";
 import type { AuthContextValue, ChurchDataKind, UserProfile } from "./types";
 
 /** Só o tipo: o supabase-js entra por `import()`, não no bundle de todos. */
@@ -30,23 +31,25 @@ interface AuthState {
 const SIGNED_OUT: AuthState = { user: null, linkedChurchIds: [] };
 
 /**
- * Eventos que mudam quem está logado e pedem um novo carregamento (VF-085).
- * Ficam de fora de propósito: `INITIAL_SESSION`, que repetiria o carregamento
- * da montagem, e `TOKEN_REFRESHED`, que recarregaria perfil e vínculos a cada
- * renovação de token sem que nada tenha mudado.
+ * Eventos de sessão que o provider escuta (VF-085).
+ *
+ * `INITIAL_SESSION` é a sessão que o `auth-js` entrega a todo ouvinte novo:
+ * é ele quem faz o carregamento da montagem, no lugar de uma chamada direta —
+ * **uma** fonte de verdade, em vez das duas que carregavam o perfil em dobro.
+ * `TOKEN_REFRESHED` fica de fora: renovar o token não muda quem está logado.
+ *
+ * Nome de evento não basta para decidir recarga: o `auth-js` emite `SIGNED_IN`
+ * também ao recuperar a sessão do storage (`_recoverAndRefresh`) e **a cada
+ * vez que a aba volta a ficar visível** (`_onVisibilityChanged`), além de
+ * replicar o evento para as outras abas. Daí a deduplicação por identidade da
+ * sessão abaixo: só recarrega quando o usuário é outro.
  */
-const RELOAD_EVENTS: ReadonlySet<string> = new Set([
+const SESSION_EVENTS: ReadonlySet<string> = new Set([
+  "INITIAL_SESSION",
   "SIGNED_IN",
   "SIGNED_OUT",
   "USER_UPDATED",
 ]);
-
-/**
- * Cookie de sessão do `@supabase/ssr` (`sb-<ref>-auth-token`, que vem fatiado
- * em `.0`, `.1`… quando é grande). É só um sinal de que vale a pena baixar o
- * supabase-js: a permissão continua vindo do perfil e, no servidor, do RLS.
- */
-const AUTH_COOKIE = /(?:^|;\s*)sb-[^=;]+-auth-token(?:\.\d+)?=/;
 
 export const AuthContext = createContext<AuthContextValue>({
   user: null,
@@ -68,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // cada navegação porque o login acontece em outra rota e o layout raiz não
   // remonta; uma vez encontrada a sessão, quem manda é o `onAuthStateChange`.
   useEffect(() => {
-    setHasSessionCookie((found) => found || AUTH_COOKIE.test(document.cookie));
+    setHasSessionCookie((found) => found || hasAuthTokenCookie(document.cookie));
   }, [pathname]);
 
   useEffect(() => {
@@ -85,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Cada carregamento recebe um número; só o mais recente escreve o estado,
     // para que uma resposta atrasada não desfaça um logout posterior.
     let lastLoad = 0;
+    // Usuário já carregado ou em carregamento; `undefined` = ainda não sabemos.
+    let knownUserId: string | null | undefined;
 
     function apply(load: number, next: AuthState) {
       if (!active || load !== lastLoad) return;
@@ -99,8 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         // Falha de rede ou do Supabase: a UI volta ao estado de visitante, que
         // é o seguro (nenhum controle de edição). O RLS continua barrando a
-        // escrita, e o próximo evento de sessão tenta de novo.
+        // escrita, e esquecer o usuário deixa o próximo evento tentar de novo.
         reportAuthError(error);
+        knownUserId = undefined;
         apply(load, SIGNED_OUT);
       }
     }
@@ -114,20 +120,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
-          if (!RELOAD_EVENTS.has(event)) return;
+          if (!SESSION_EVENTS.has(event)) return;
+
           if (!session) {
+            knownUserId = null;
             apply(++lastLoad, SIGNED_OUT);
             return;
           }
+
+          // `USER_UPDATED` altera o próprio usuário: recarrega mesmo sendo ele.
+          const isSameSession =
+            event !== "USER_UPDATED" && session.user.id === knownUserId;
+          if (isSameSession) return;
+
+          knownUserId = session.user.id;
           void loadUser(supabase);
         });
-        unsubscribe = () => subscription.unsubscribe();
-        if (!active) {
-          unsubscribe();
-          return;
-        }
 
-        await loadUser(supabase);
+        unsubscribe = () => subscription.unsubscribe();
+        if (!active) unsubscribe();
       } catch (error) {
         // Inclui a falha ao baixar o chunk do supabase-js.
         reportAuthError(error);
@@ -215,6 +226,19 @@ async function readAuthState(supabase: BrowserClient): Promise<AuthState> {
 
 /** Deixa o erro visível no console do navegador, sem detalhe na tela. */
 function reportAuthError(error: unknown) {
-  const detail = error instanceof Error ? error.message : String(error);
-  console.error(`Via Fidei: falha ao carregar a sessão do usuário. ${detail}`);
+  console.error(
+    `Via Fidei: falha ao carregar a sessão do usuário. ${describeError(error)}`,
+  );
+}
+
+/**
+ * Mensagem de um `Error` (`AuthError`), de um erro do PostgREST (objeto com
+ * `message`, que não herda de `Error`) ou de um valor qualquer.
+ */
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return String(error);
 }

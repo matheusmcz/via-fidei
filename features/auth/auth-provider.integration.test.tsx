@@ -17,8 +17,10 @@ const nav = vi.hoisted(() => ({ pathname: "/igreja/exemplo" }));
 vi.mock("next/navigation", () => ({ usePathname: () => nav.pathname }));
 
 const USER_ID = "5d2e8f1a-3c4b-4a6d-8e9f-7b1c2d3e4f5a";
+const OTHER_USER_ID = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 const LINKED_CHURCH = "3f1c2b7e-8d4a-4f6b-9a2c-1e5d7f8a9b0c";
 const SESSION = { user: { id: USER_ID } };
+const OTHER_SESSION = { user: { id: OTHER_USER_ID } };
 
 /** Cookie de sessão do `@supabase/ssr`: sem ele o provider nem baixa o cliente. */
 function signInCookie() {
@@ -43,6 +45,10 @@ function mockBrowserClient(options: FakeSupabaseOptions) {
 function authListener(client: FakeSupabaseClient): FakeAuthListener {
   const [listener] = client.auth.onAuthStateChange.mock.calls[0];
   return listener;
+}
+
+function loggedErrors() {
+  return vi.mocked(console.error).mock.calls.flat().join(" ");
 }
 
 function profileRow(role: "admin" | "editor", isActive: boolean) {
@@ -78,9 +84,7 @@ function AuthProbe() {
     <ul>
       <li>autenticado: {String(isAuthenticated)}</li>
       <li>admin: {String(isAdmin)}</li>
-      <li>
-        contato: {String(canEditChurchData(LINKED_CHURCH, "contact"))}
-      </li>
+      <li>contato: {String(canEditChurchData(LINKED_CHURCH, "contact"))}</li>
       <li>
         identidade: {String(canEditChurchData(LINKED_CHURCH, "identity"))}
       </li>
@@ -174,6 +178,15 @@ describe("AuthProvider", () => {
     expect(vi.mocked(createClient)).not.toHaveBeenCalled();
   });
 
+  it("cookie do verificador do PKCE não conta como sessão", async () => {
+    clearCookies();
+    document.cookie = "sb-exemplo-auth-token-code-verifier=abc";
+    renderProvider();
+
+    expect(await screen.findByText("autenticado: false")).toBeInTheDocument();
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled();
+  });
+
   it("encontra a sessão aberta depois da montagem (login em outra rota)", async () => {
     clearCookies();
     const client = mockBrowserClient(linkedEditor());
@@ -203,29 +216,60 @@ describe("AuthProvider", () => {
     expect(client.tables).toEqual([]);
   });
 
-  it("carrega o perfil uma vez só: INITIAL_SESSION e TOKEN_REFRESHED não recarregam (VF-085)", async () => {
+  it("carrega o perfil uma vez só no `INITIAL_SESSION` da montagem (VF-085)", async () => {
     const client = mockBrowserClient(linkedEditor());
     renderProvider();
 
     expect(await screen.findByText("contato: true")).toBeInTheDocument();
     expect(client.tables).toEqual(["profiles", "editor_churches"]);
+    expect(client.auth.getUser).toHaveBeenCalledTimes(1);
+  });
+
+  it("não recarrega no SIGNED_IN da mesma sessão nem no TOKEN_REFRESHED (VF-085)", async () => {
+    const client = mockBrowserClient(linkedEditor());
+    renderProvider();
+
+    expect(await screen.findByText("contato: true")).toBeInTheDocument();
 
     await act(async () => {
-      authListener(client)("INITIAL_SESSION", SESSION);
+      // O `auth-js` emite SIGNED_IN ao recuperar a sessão do storage e a cada
+      // vez que a aba volta a ficar visível, além de replicar entre abas.
+      authListener(client)("SIGNED_IN", SESSION);
+      authListener(client)("SIGNED_IN", SESSION);
       authListener(client)("TOKEN_REFRESHED", SESSION);
+      authListener(client)("INITIAL_SESSION", SESSION);
     });
 
     expect(client.tables).toEqual(["profiles", "editor_churches"]);
+    expect(screen.getByText("contato: true")).toBeInTheDocument();
   });
 
-  it("recarrega o perfil quando entra outro usuário (SIGNED_IN)", async () => {
+  it("recarrega quando entra outro usuário (SIGNED_IN)", async () => {
     const client = mockBrowserClient(linkedEditor());
     renderProvider();
 
     expect(await screen.findByText("contato: true")).toBeInTheDocument();
 
     await act(async () => {
-      authListener(client)("SIGNED_IN", SESSION);
+      authListener(client)("SIGNED_IN", OTHER_SESSION);
+    });
+
+    expect(client.tables).toEqual([
+      "profiles",
+      "editor_churches",
+      "profiles",
+      "editor_churches",
+    ]);
+  });
+
+  it("recarrega o mesmo usuário no USER_UPDATED", async () => {
+    const client = mockBrowserClient(linkedEditor());
+    renderProvider();
+
+    expect(await screen.findByText("contato: true")).toBeInTheDocument();
+
+    await act(async () => {
+      authListener(client)("USER_UPDATED", SESSION);
     });
 
     expect(client.tables).toEqual([
@@ -272,9 +316,9 @@ describe("AuthProvider", () => {
     expect(await screen.findByText("contato: true")).toBeInTheDocument();
 
     await act(async () => {
-      // O recarregamento para no primeiro `await`; o logout chega antes da
-      // resposta e não pode ser desfeito por ela.
-      authListener(client)("SIGNED_IN", SESSION);
+      // A recarga para no primeiro `await`; o logout chega antes da resposta
+      // e não pode ser desfeito por ela.
+      authListener(client)("SIGNED_IN", OTHER_SESSION);
       authListener(client)("SIGNED_OUT", null);
     });
 
@@ -291,7 +335,57 @@ describe("AuthProvider", () => {
 
     expect(await screen.findByText("autenticado: false")).toBeInTheDocument();
     expect(screen.getByText("contato: false")).toBeInTheDocument();
-    const logged = vi.mocked(console.error).mock.calls.flat().join(" ");
-    expect(logged).toContain("fetch failed");
+    expect(loggedErrors()).toContain("fetch failed");
+  });
+
+  it("erro do Auth ao ler a sessão deixa a UI como visitante", async () => {
+    mockBrowserClient({
+      user: { id: USER_ID },
+      userError: { message: "Auth indisponível" },
+    });
+    renderProvider();
+
+    expect(await screen.findByText("autenticado: false")).toBeInTheDocument();
+    expect(loggedErrors()).toContain("Auth indisponível");
+  });
+
+  it("erro ao ler os vínculos não deixa o editor sem igreja em silêncio", async () => {
+    const client = mockBrowserClient({
+      user: { id: USER_ID },
+      responses: {
+        profiles: profileRow("editor", true),
+        editor_churches: { data: null, error: { message: "falha nos vínculos" } },
+      },
+    });
+    renderProvider();
+
+    expect(await screen.findByText("autenticado: false")).toBeInTheDocument();
+    expect(screen.getByText("contato: false")).toBeInTheDocument();
+    expect(loggedErrors()).toContain("falha nos vínculos");
+    expect(client.tables).toEqual(["profiles", "editor_churches"]);
+  });
+
+  it("o erro de um carregamento deixa o próximo evento tentar de novo", async () => {
+    const client = mockBrowserClient({
+      user: { id: USER_ID },
+      responses: {
+        // Primeiro carregamento falha; o seguinte encontra o perfil.
+        profiles: [
+          { reject: new TypeError("fetch failed") },
+          profileRow("editor", true),
+        ],
+        editor_churches: { data: [{ church_id: LINKED_CHURCH }], error: null },
+      },
+    });
+    renderProvider();
+
+    expect(await screen.findByText("autenticado: false")).toBeInTheDocument();
+
+    await act(async () => {
+      // Mesma sessão: só recarrega porque a falha esqueceu o usuário.
+      authListener(client)("SIGNED_IN", SESSION);
+    });
+
+    expect(await screen.findByText("contato: true")).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
-import { useAuth, type ChurchDataKind } from "@/features/auth";
+import { useAuth } from "@/features/auth/use-auth";
+import type { ChurchDataKind } from "@/features/auth/types";
 import { Pencil } from "lucide-react";
 
 interface EditIndicatorProps {

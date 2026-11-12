@@ -1,7 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useAuth, type ChurchDataKind } from "@/features/auth";
+import { useAuth } from "@/features/auth/use-auth";
+import type { ChurchDataKind } from "@/features/auth/types";
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 

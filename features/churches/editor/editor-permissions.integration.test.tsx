@@ -10,10 +10,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditableSection } from "./editable-section";
 import { EditIndicator } from "./edit-indicator";
 
-// Os componentes importam o barril `@/features/auth`, que também reexporta as
-// Server Actions. No build do Next elas viram stub no bundle do cliente; aqui
-// basta neutralizar o `server-only` que elas arrastam.
-vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/client", () => ({ createClient: vi.fn() }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/igreja/exemplo" }));
 
