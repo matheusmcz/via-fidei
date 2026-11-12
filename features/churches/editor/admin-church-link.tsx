@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/features/auth";
+import { useAuth } from "@/features/auth/use-auth";
 import { Settings } from "lucide-react";
 import Link from "next/link";
 
