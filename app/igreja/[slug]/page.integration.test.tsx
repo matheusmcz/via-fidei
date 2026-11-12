@@ -6,7 +6,7 @@ import {
   type FakeSupabaseOptions,
 } from "@/tests/fixtures/supabase";
 import type { Church } from "@/types";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ChurchDetailPage from "./page";
 
@@ -79,9 +79,9 @@ async function renderPage() {
 
 /** O lápis da seção fica dentro do próprio título. */
 function pencilInHeading(name: RegExp, level: 1 | 2) {
-  return screen
-    .getByRole("heading", { level, name })
-    .querySelector("button[title='Editar']");
+  return within(screen.getByRole("heading", { level, name })).queryByTitle(
+    "Editar",
+  );
 }
 
 describe("página da igreja: tipo de dado por seção (D3, D15)", () => {
@@ -113,11 +113,13 @@ describe("página da igreja: tipo de dado por seção (D3, D15)", () => {
 
     // Clero é só do admin (D15): nem "Adicionar", nem lápis.
     expect(screen.queryByText(ADD_CLERGY)).not.toBeInTheDocument();
-    expect(pencilInHeading(/^Clero/, 2)).toBeNull();
+    expect(pencilInHeading(/^Clero/, 2)).not.toBeInTheDocument();
     // Identidade da igreja (nome) também é só do admin (D3).
-    expect(pencilInHeading(/Paróquia São Paulo Apóstolo/, 1)).toBeNull();
+    expect(
+      pencilInHeading(/Paróquia São Paulo Apóstolo/, 1),
+    ).not.toBeInTheDocument();
     // Contraprova: onde ele pode editar, o lápis está lá.
-    expect(pencilInHeading(/^Contato/, 2)).not.toBeNull();
+    expect(pencilInHeading(/^Contato/, 2)).toBeInTheDocument();
   });
 
   it("admin edita todas as seções, inclusive nome e clero", async () => {
@@ -131,8 +133,8 @@ describe("página da igreja: tipo de dado por seção (D3, D15)", () => {
     for (const label of [ADD_CONTACT, ADD_SCHEDULE, ADD_MINISTRY]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
-    expect(pencilInHeading(/Paróquia São Paulo Apóstolo/, 1)).not.toBeNull();
-    expect(pencilInHeading(/^Clero/, 2)).not.toBeNull();
+    expect(pencilInHeading(/Paróquia São Paulo Apóstolo/, 1)).toBeInTheDocument();
+    expect(pencilInHeading(/^Clero/, 2)).toBeInTheDocument();
   });
 
   it("visitante não vê nenhum controle de edição", async () => {
