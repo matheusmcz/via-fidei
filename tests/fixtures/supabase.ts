@@ -159,6 +159,17 @@ function createQueryBuilder(
   return builder;
 }
 
+/** Sessão simulada entregue ao ouvinte de `onAuthStateChange`. */
+export interface FakeAuthSession {
+  user: { id: string };
+}
+
+/** Assinatura do ouvinte registrado por `auth.onAuthStateChange`. */
+export type FakeAuthListener = (
+  event: string,
+  session: FakeAuthSession | null,
+) => void;
+
 function createFakeAuth(options: FakeSupabaseOptions) {
   return {
     getUser: vi.fn(async () => ({
@@ -172,7 +183,9 @@ function createFakeAuth(options: FakeSupabaseOptions) {
     signOut: vi.fn(async (_options?: { scope?: string }) => ({
       error: options.signOutError ?? null,
     })),
-    onAuthStateChange: vi.fn(() => ({
+    // O ouvinte é tipado para que o teste alcance `mock.calls[0][0]` e dispare
+    // os eventos de sessão (`SIGNED_IN`, `TOKEN_REFRESHED`…) por conta própria.
+    onAuthStateChange: vi.fn((_listener: FakeAuthListener) => ({
       data: { subscription: { unsubscribe: vi.fn() } },
     })),
   };

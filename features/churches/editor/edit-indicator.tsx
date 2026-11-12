@@ -1,16 +1,18 @@
 "use client";
 
-import { useAuth } from "@/features/auth";
+import { useAuth, type ChurchDataKind } from "@/features/auth";
 import { Pencil } from "lucide-react";
 
 interface EditIndicatorProps {
   churchId: string;
+  /** Tipo de dado que o lápis edita: decide quem vê o controle (D3). */
+  kind: ChurchDataKind;
 }
 
-export function EditIndicator({ churchId }: EditIndicatorProps) {
-  const { canEditChurch, isLoading } = useAuth();
+export function EditIndicator({ churchId, kind }: EditIndicatorProps) {
+  const { canEditChurchData, isLoading } = useAuth();
 
-  if (isLoading || !canEditChurch(churchId)) {
+  if (isLoading || !canEditChurchData(churchId, kind)) {
     return null;
   }
 
