@@ -24,5 +24,5 @@ paths:
 
 - Preferir composição a props complexas.
 - Lógica reutilizável em custom hooks (`use-*.ts`) dentro da pasta da feature (ex.: `features/churches/use-church-filters.ts`).
-- Visibilidade por papel via `useAuth()` (`canEditChurch`, `isAdmin`) — sempre tratar `isLoading`.
+- Visibilidade por papel via `useAuth()` (`canEditChurchData(churchId, kind)`, `isAdmin`) — sempre tratar `isLoading`. A permissão é **por tipo de dado** (D3): identidade da igreja e clero são só do admin.
 - A UI condicionada a papel é só conveniência: a permissão real é do RLS e da checagem na Server Action.

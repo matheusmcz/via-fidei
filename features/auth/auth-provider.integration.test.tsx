@@ -6,12 +6,15 @@ import {
   type FakeSupabaseOptions,
 } from "@/tests/fixtures/supabase";
 import { act, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "./auth-provider";
 import { useAuth } from "./use-auth";
 
 vi.mock("@/lib/supabase/client", () => ({ createClient: vi.fn() }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/igreja/exemplo" }));
+// A rota é mutável: o provider volta a procurar a sessão a cada navegação.
+const nav = vi.hoisted(() => ({ pathname: "/igreja/exemplo" }));
+vi.mock("next/navigation", () => ({ usePathname: () => nav.pathname }));
 
 const USER_ID = "5d2e8f1a-3c4b-4a6d-8e9f-7b1c2d3e4f5a";
 const LINKED_CHURCH = "3f1c2b7e-8d4a-4f6b-9a2c-1e5d7f8a9b0c";
@@ -98,6 +101,7 @@ describe("AuthProvider", () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset();
     vi.spyOn(console, "error").mockImplementation(() => {});
+    nav.pathname = "/igreja/exemplo";
     signInCookie();
   });
 
@@ -170,6 +174,27 @@ describe("AuthProvider", () => {
     expect(vi.mocked(createClient)).not.toHaveBeenCalled();
   });
 
+  it("encontra a sessão aberta depois da montagem (login em outra rota)", async () => {
+    clearCookies();
+    const client = mockBrowserClient(linkedEditor());
+    const { rerender } = renderProvider();
+
+    expect(await screen.findByText("autenticado: false")).toBeInTheDocument();
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled();
+
+    // O login grava o cookie e o Next navega sem remontar o layout raiz.
+    signInCookie();
+    nav.pathname = "/";
+    rerender(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByText("contato: true")).toBeInTheDocument();
+    expect(client.tables).toEqual(["profiles", "editor_churches"]);
+  });
+
   it("cookie sem sessão válida não autentica ninguém", async () => {
     const client = mockBrowserClient({ user: null });
     renderProvider();
@@ -224,6 +249,37 @@ describe("AuthProvider", () => {
     expect(screen.getByText("autenticado: false")).toBeInTheDocument();
     expect(screen.getByText("contato: false")).toBeInTheDocument();
     expect(client.tables).toEqual(["profiles", "editor_churches"]);
+  });
+
+  it("sobrevive ao efeito duplo do StrictMode sem carregar duas vezes", async () => {
+    const client = mockBrowserClient(linkedEditor());
+    render(
+      <StrictMode>
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText("contato: true")).toBeInTheDocument();
+    expect(client.tables).toEqual(["profiles", "editor_churches"]);
+  });
+
+  it("logout durante um carregamento em voo vence a resposta atrasada", async () => {
+    const client = mockBrowserClient(linkedEditor());
+    renderProvider();
+
+    expect(await screen.findByText("contato: true")).toBeInTheDocument();
+
+    await act(async () => {
+      // O recarregamento para no primeiro `await`; o logout chega antes da
+      // resposta e não pode ser desfeito por ela.
+      authListener(client)("SIGNED_IN", SESSION);
+      authListener(client)("SIGNED_OUT", null);
+    });
+
+    expect(screen.getByText("autenticado: false")).toBeInTheDocument();
+    expect(screen.getByText("contato: false")).toBeInTheDocument();
   });
 
   it("falha de rede deixa a UI como visitante e registra o erro", async () => {
