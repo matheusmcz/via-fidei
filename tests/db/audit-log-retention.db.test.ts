@@ -37,7 +37,7 @@ import {
   createServiceRoleTestClient,
   signInAsTestUser,
 } from "./client";
-import { TEST_DATA_PREFIX, TEST_USERS } from "./seed";
+import { TEST_CHURCHES, TEST_DATA_PREFIX, TEST_USERS } from "./seed";
 
 /** Marcador da `019` (`public.audit_log_pii_mask()`). */
 const MASK = "[anonimizado]";
@@ -58,6 +58,12 @@ const MISSING_MIGRATION_HINT =
 /** Colunas de `profiles` que a `019` anonimiza. */
 const PII_KEYS = ["name", "email"] as const;
 
+/** `permission denied` do Postgres, como o PostgREST o devolve. */
+const PERMISSION_DENIED = "42501";
+
+const PERMISSION_DENIED_HINT =
+  "esperava recusa por falta de permissão (42501); PGRST202 aqui significa que a função sumiu do banco";
+
 /** Linha de `audit_log` do jeito que o PostgREST devolve. */
 interface AuditRow {
   id: number;
@@ -74,6 +80,8 @@ let service: SupabaseClient;
 let disposableId: string;
 let registrosAntes: AuditRow[];
 let registrosDepois: AuditRow[];
+let edicoesDeIgrejaAntes: AuditRow[];
+let edicoesDeIgrejaDepois: AuditRow[];
 
 /** Registros de `profiles` de um perfil, na ordem em que foram gravados. */
 async function lerRegistrosDoPerfil(profileId: string): Promise<AuditRow[]> {
@@ -88,6 +96,24 @@ async function lerRegistrosDoPerfil(profileId: string): Promise<AuditRow[]> {
     throw new Error(
       `Não foi possível ler o audit_log como admin: ${error.message}. ` +
         "A política audit_log_select_admin da 017 está aplicada?"
+    );
+  }
+
+  return (data ?? []) as AuditRow[];
+}
+
+/** Registros de `churches` que um autor gravou, na ordem em que foram gravados. */
+async function lerEdicoesDeIgrejaDoAutor(actorId: string): Promise<AuditRow[]> {
+  const { data, error } = await adminClient
+    .from("audit_log")
+    .select("id, operation, table_name, actor_id, record_pk, old_data, new_data")
+    .eq("table_name", "churches")
+    .eq("actor_id", actorId)
+    .order("id");
+
+  if (error) {
+    throw new Error(
+      `Não foi possível ler as edições de igreja no audit_log: ${error.message}`
     );
   }
 
@@ -145,7 +171,55 @@ beforeAll(async () => {
     }
   }
 
+  // Uma edição de igreja feita por ele, logado como editor de verdade. É o que
+  // prova a decisão de 07/11/2026: o log continua atribuindo esta edição a
+  // ele depois que o perfil sai. Sem isso, `actor_id` nunca sairia de nulo
+  // aqui (criação pelo GoTrue, updates pelo service role).
+  // O perfil nasce sem permissão (`015`): quem ativa é o admin — aqui, o
+  // service role, que não passa pelo trigger da `010`.
+  const { error: erroAtivacao } = await service
+    .from("profiles")
+    .update({ role: "editor", is_active: true })
+    .eq("id", disposableId);
+
+  if (erroAtivacao) {
+    throw new Error(
+      `Não foi possível ativar o perfil descartável: ${erroAtivacao.message}`
+    );
+  }
+
+  const { error: erroVinculo } = await service
+    .from("editor_churches")
+    .insert({ editor_id: disposableId, church_id: TEST_CHURCHES.linked.id });
+
+  if (erroVinculo) {
+    throw new Error(
+      `Não foi possível vincular o perfil descartável à igreja: ${erroVinculo.message}`
+    );
+  }
+
+  // O e-mail do Auth continua o original: só `profiles.email` foi alterado.
+  const editorClient = await signInAsTestUser({
+    email: DISPOSABLE.email,
+    password: DISPOSABLE.password,
+  });
+
+  // Telefone é uma das colunas que o editor vinculado pode alterar (D3, `014`).
+  const { error: erroEdicao } = await editorClient
+    .from("churches")
+    .update({ phone: "(82) 3333-0108" })
+    .eq("id", TEST_CHURCHES.linked.id)
+    .select("id")
+    .single();
+
+  if (erroEdicao) {
+    throw new Error(
+      `O editor descartável não conseguiu editar a igreja vinculada: ${erroEdicao.message}`
+    );
+  }
+
   registrosAntes = await lerRegistrosDoPerfil(disposableId);
+  edicoesDeIgrejaAntes = await lerEdicoesDeIgrejaDoAutor(disposableId);
 
   // O painel do Supabase apaga o auth.users; o perfil sai em cascata.
   const { error: erroExclusao } = await service.auth.admin.deleteUser(
@@ -159,6 +233,7 @@ beforeAll(async () => {
   }
 
   registrosDepois = await lerRegistrosDoPerfil(disposableId);
+  edicoesDeIgrejaDepois = await lerEdicoesDeIgrejaDoAutor(disposableId);
 });
 
 describe("audit_log: anonimização ao excluir um editor (migration 019)", () => {
@@ -198,8 +273,10 @@ describe("audit_log: anonimização ao excluir um editor (migration 019)", () =>
   it("mantém papel, status e id no registro do DELETE", () => {
     const exclusao = registrosDepois.find((row) => row.operation === "DELETE");
 
+    // O cenário ativou o perfil para que ele editasse uma igreja: o log
+    // guarda o papel e o status que ele tinha de verdade ao ser excluído.
     expect(exclusao?.old_data?.role).toBe("editor");
-    expect(exclusao?.old_data?.is_active).toBe(false);
+    expect(exclusao?.old_data?.is_active).toBe(true);
     expect(exclusao?.old_data?.id).toBe(disposableId);
   });
 
@@ -211,6 +288,29 @@ describe("audit_log: anonimização ao excluir um editor (migration 019)", () =>
 
     for (const row of registrosDepois) {
       expect(row.record_pk.id).toBe(disposableId);
+    }
+  });
+
+  it("mantém a atribuição das edições que o editor excluído fez", async () => {
+    // Verificação positiva: ele editou mesmo uma igreja, e o log atribuiu a
+    // edição a ele.
+    expect(edicoesDeIgrejaAntes.length).toBeGreaterThan(0);
+    expect(edicoesDeIgrejaAntes.every((row) => row.actor_id === disposableId)).toBe(
+      true
+    );
+
+    // Decisão de 07/11/2026: `actor_id` continua no log depois da exclusão —
+    // sem ele o log perde a atribuição, e o UUID já não resolve para ninguém.
+    expect(
+      edicoesDeIgrejaDepois.map((row) => row.id),
+      "a exclusão do editor não pode apagar nem desatribuir as edições dele"
+    ).toEqual(edicoesDeIgrejaAntes.map((row) => row.id));
+
+    for (const row of edicoesDeIgrejaDepois) {
+      expect(row.actor_id).toBe(disposableId);
+      // A anonimização é só de `profiles`: nada de marcador em `churches`.
+      expect(valoresDePii(row)).not.toContain(MASK);
+      expect(row.new_data?.phone).toBe("(82) 3333-0108");
     }
   });
 
@@ -266,14 +366,16 @@ describe("audit_log: limpeza por retenção (migration 019)", () => {
     // função existe e está exposta é o teste do service role, acima.
     const { data, error } = await adminClient.rpc("purge_audit_log");
 
-    expect(error).not.toBeNull();
+    // O código separa "sem permissão" de "a função sumiu" (PGRST202): sem
+    // isso, remover a função por engano deixaria este teste verde.
+    expect(error?.code, PERMISSION_DENIED_HINT).toBe(PERMISSION_DENIED);
     expect(data).toBeNull();
   });
 
   it("o anon não executa a limpeza", async () => {
     const { data, error } = await createAnonTestClient().rpc("purge_audit_log");
 
-    expect(error).not.toBeNull();
+    expect(error?.code, PERMISSION_DENIED_HINT).toBe(PERMISSION_DENIED);
     expect(data).toBeNull();
   });
 });
@@ -325,10 +427,22 @@ describe("audit_log: continua fechado para escrita pela API", () => {
     for (const funcao of [
       "audit_log_pii_mask",
       "audit_log_retention",
-      "anonymize_profile_in_audit_log",
+      "anonymize_profiles_in_audit_log",
     ]) {
       const { error } = await service.rpc(funcao);
-      expect(error, `${funcao} deveria estar fora do alcance da API`).not.toBeNull();
+      expect(
+        error?.code,
+        `${funcao} deveria recusar por falta de permissão, não por outro motivo`
+      ).toBe(PERMISSION_DENIED);
     }
+  });
+
+  it("a função do trigger nem chega a ser exposta pela API", async () => {
+    // Função que devolve `trigger` não entra no cache de schema do PostgREST,
+    // então aqui a recusa é por inexistência, não por permissão — motivo
+    // diferente das de cima, e por isso um teste à parte.
+    const { error } = await service.rpc("anonymize_profile_in_audit_log");
+
+    expect(error?.code).toBe("PGRST202");
   });
 });

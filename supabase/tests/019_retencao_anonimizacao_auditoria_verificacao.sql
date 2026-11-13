@@ -434,9 +434,22 @@ do $$
 declare
   v_orfao uuid := gen_random_uuid();
   v_vivo uuid := gen_random_uuid();
+  v_igreja uuid := gen_random_uuid();
+  v_nome_da_igreja constant text := 'Igreja de controle da verificação 019';
   v_anonimizados bigint;
   v_com_pii int;
+  v_nome_gravado text;
 begin
+  -- Controle de OUTRA TABELA: churches também tem uma coluna "name", que é
+  -- dado público e não entra na D22. O backfill olha só table_name =
+  -- 'profiles'; sem esse filtro, ele mascararia o nome de toda igreja já
+  -- registrada no log. Esta igreja é a testemunha disso.
+  insert into public.churches (id, name, slug, address, district, type)
+  values (
+    v_igreja, v_nome_da_igreja, 'igreja-de-controle-verificacao-019',
+    'Rua da Verificação, 19', 'Centro', 'parish'
+  );
+
   begin
     insert into auth.users (id, email, raw_user_meta_data)
     values (v_orfao, 'backfill-orfao-019@viafidei.invalid', jsonb_build_object('name', 'Órfão do Backfill'));
@@ -503,12 +516,32 @@ begin
     raise exception 'FALHOU 4b: o backfill anonimizou os registros de um perfil que ainda existe';
   end if;
 
-  -- 4c. Segunda passada não muda nada.
-  if public.anonymize_profiles_in_audit_log() <> 0 then
-    raise exception 'FALHOU 4c: o backfill não é idempotente (a 2a passada mexeu em registro)';
+  -- 4c. Outra tabela não é tocada. É a asserção que pega o filtro
+  -- table_name = 'profiles' esquecido: churches.name é dado público, está
+  -- fora da D22, e tem o mesmo nome de coluna que a máscara procura.
+  select a.new_data ->> 'name' into v_nome_gravado
+  from public.audit_log a
+  where a.table_name = 'churches'
+    and a.operation = 'INSERT'
+    and a.record_pk ->> 'id' = v_igreja::text
+  order by a.id desc
+  limit 1;
+
+  if v_nome_gravado is null then
+    raise exception 'PREPARAÇÃO 4c: a igreja de controle não gerou registro de INSERT no log';
   end if;
 
-  raise notice 'OK 4: backfill anonimizou % registro(s) órfãos e preservou o perfil de controle', v_anonimizados;
+  if v_nome_gravado <> v_nome_da_igreja then
+    raise exception 'FALHOU 4c: o backfill mascarou o nome de uma igreja (esperava "%", veio "%")',
+      v_nome_da_igreja, v_nome_gravado;
+  end if;
+
+  -- 4d. Segunda passada não muda nada.
+  if public.anonymize_profiles_in_audit_log() <> 0 then
+    raise exception 'FALHOU 4d: o backfill não é idempotente (a 2a passada mexeu em registro)';
+  end if;
+
+  raise notice 'OK 4: backfill anonimizou % registro(s) órfãos e preservou o perfil e a igreja de controle', v_anonimizados;
 end $$;
 
 -- ============================================
