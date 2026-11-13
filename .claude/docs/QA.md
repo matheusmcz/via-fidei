@@ -38,11 +38,13 @@ Acesse as URLs listadas nos casos de teste e verifique os comportamentos esperad
 npm run test:unit         # regras puras de lib/utils (Vitest, node)
 npm run test:integration  # componentes e queries com Supabase simulado (Vitest + Testing Library, jsdom)
 npm run test:e2e          # smoke das páginas públicas (Playwright, Chromium, porta 3203)
+npm run test:db           # RLS, triggers e auditoria no Supabase LOCAL (Vitest); opt-in, precisa de Docker
 ```
 
 - Nenhum teste grava dados. O e2e lê o Supabase configurado no `.env.local` (ou nos secrets do CI) e precisa do projeto ativo.
 - Primeira vez: `npx playwright install chromium`. O `test:e2e` faz `npm run build` e sobe `next start -p 3203`; com `E2E_SKIP_BUILD=1` reaproveita o build existente.
 - Testes que gravam dados (login real, edição, criação de editor) dependem do Supabase local (D10) e ainda não existem: CT-011 (login com credenciais), CT-012 e CT-013 seguem manuais.
+- O `test:db` (VF-098) roda contra o Supabase local, fora do `npm test` e do CI: `npx supabase start`, `npm run test:db:env` (gera o `.env.test`, não versionado) e `npx supabase db reset`. Cobre as migrations `010`, `014` e `019` (CT-015).
 - O CI (`.github/workflows/ci.yml`) roda lint, tipos, unitários, integração, build e e2e em PR e push para `develop` e `main`.
 
 #### Casos cobertos por teste automatizado
@@ -351,6 +353,25 @@ Os mapeamentos das queries (`getChurches`, `getChurchSlugs`, `getChurchBySlug`, 
 
 ---
 
+### CT-015: Retenção e anonimização da auditoria (VF-108, D22)
+
+**Onde:** banco (migration `019`). Sem tela: a leitura do `audit_log` é pelo SQL Editor até o VF-109.
+
+**Pré-requisito:** Supabase local no ar com a `019` aplicada (`npx supabase start`, `npm run test:db:env`, `npx supabase db reset`).
+
+**Verificações:**
+
+- [ ] Logo depois do `db reset`, `supabase/tests/019_retencao_anonimizacao_auditoria_pre_verificacao.sql` devolve as 4 contagens **zeradas**. Depois de qualquer `npm run test:db` as contagens 1 e 2 deixam de ser zero — o `audit_log` só recebe inserção, então os registros das fixtures ficam lá
+- [ ] `supabase/tests/019_retencao_anonimizacao_auditoria_verificacao.sql` imprime `OK 0` a `OK 6` e termina em `ROLLBACK`, sem nenhuma linha `FALHOU` ou `PREPARAÇÃO` (a linha `NOTICE: Preparação: perfil …` é informativa e é esperada)
+- [ ] `npm run test:db` passa inteiro
+- [ ] Excluindo um editor de teste pelo painel do Supabase, **todos** os registros dele no `audit_log` ficam com `name` e `email` iguais a `[anonimizado]`, inclusive o do próprio `DELETE`; `actor_id` e `record_pk` continuam preenchidos e nenhum registro é apagado
+- [ ] Os registros de outro editor, que continua existindo, seguem com nome e e-mail à vista
+- [ ] As edições que o editor excluído fez em outras tabelas (ex.: telefone de igreja) continuam no log, com `actor_id` preenchido e sem marcador
+- [ ] `select public.purge_audit_log();` só roda com a role do SQL Editor ou com a chave de service role: admin logado e `anon` recebem erro de permissão
+- [ ] O agendamento da limpeza **não** foi criado pela migration (é passo à parte, seção 5 da `019`)
+
+---
+
 ## Checklist de Regressão
 
 Use este checklist antes de cada deploy:
@@ -365,7 +386,7 @@ Use este checklist antes de cada deploy:
 - [ ] Seção de clero exibe corretamente
 - [ ] Horários exibem corretamente
 - [ ] Voltar para listagem funciona
-- [ ] Migration nova aplicada: rodar de novo os roteiros de `supabase/tests/` (`014`, `015`, `016`, `017`), todos sem erro
+- [ ] Migration nova aplicada: rodar de novo os roteiros de `supabase/tests/` (`014`, `015`, `016`, `017`, `018`, `019`), todos sem erro
 
 ### Visual
 
