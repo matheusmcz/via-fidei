@@ -23,6 +23,10 @@
 -- Depois de aplicar:
 --   supabase/tests/019_retencao_anonimizacao_auditoria_verificacao.sql
 --
+-- A anonimização mora em uma função só, public.anonymize_profiles_in_audit_log():
+-- com o id de um perfil ela serve ao trigger; sem argumento, ao backfill. Assim
+-- a regra de "o que anonimizar" não existe em duas cópias que podem divergir.
+--
 -- Idempotente: pode rodar de novo no SQL Editor (create or replace,
 -- drop … if exists). O backfill da seção 3 só reescreve o que ainda não está
 -- anonimizado. Depende da 017.
@@ -101,32 +105,68 @@ revoke all on function public.audit_log_mask_pii(jsonb) from public, anon, authe
 -- As chamadas a auth.admin.deleteUser em features/auth/admin-actions.ts só
 -- desfazem a criação; a exclusão real vem do painel do Supabase, que apaga o
 -- auth.users e leva o profiles em cascata. Um trigger alcança qualquer
--- caminho: painel, SQL Editor, API e cascata.
+-- DELETE: painel, SQL Editor, API e cascata.
+--
+-- O que escapa: TRUNCATE public.profiles (não dispara trigger FOR EACH ROW, e
+-- a 017 já o deixa fora do log) e o trigger desabilitado à mão. Nos dois casos
+-- o remédio é rodar o backfill, que acha qualquer perfil que não existe mais:
+--   select public.anonymize_profiles_in_audit_log();
+-- Reaplicar esta migration inteira faz o mesmo (a seção 3 chama o backfill).
 --
 -- SECURITY DEFINER é necessário: nenhuma role da API tem UPDATE em audit_log,
 -- e a função grava como dona da tabela (fora do RLS). Igual ao
 -- audit_log_changes() da 017, ela é AFTER e não decide permissão nenhuma com
 -- current_user, então não cabe aqui a ressalva da 010/014.
-create or replace function public.anonymize_profile_in_audit_log()
-returns trigger
+--
+-- Uma função só serve ao trigger e ao backfill da seção 3, para que a regra de
+-- "o que anonimizar" não exista em duas cópias que podem divergir:
+--   - com p_profile_id: os registros daquele perfil (o trigger, na exclusão);
+--   - sem argumento: os registros de todo perfil que não existe mais (o
+--     backfill, e o conserto de um DELETE que escapou — ver a nota do trigger).
+-- Devolve quantos registros anonimizou.
+create or replace function public.anonymize_profiles_in_audit_log(
+  p_profile_id uuid default null
+)
+returns bigint
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_profile_id constant text := old.id::text;
+  v_anonimizados bigint;
 begin
   update public.audit_log a
   set
     old_data = public.audit_log_mask_pii(a.old_data),
     new_data = public.audit_log_mask_pii(a.new_data)
   where a.table_name = 'profiles'
-    and a.record_pk ->> 'id' = v_profile_id
+    and case
+      when p_profile_id is null then not exists (
+        select 1 from public.profiles p where p.id::text = a.record_pk ->> 'id'
+      )
+      else a.record_pk ->> 'id' = p_profile_id::text
+    end
     and (
       public.audit_log_mask_pii(a.old_data) is distinct from a.old_data
       or public.audit_log_mask_pii(a.new_data) is distinct from a.new_data
     );
 
+  get diagnostics v_anonimizados = row_count;
+  return v_anonimizados;
+end;
+$$;
+
+comment on function public.anonymize_profiles_in_audit_log(uuid) is
+  'VF-108 (D22): anonimiza nome e e-mail no audit_log. Com o id, os registros daquele perfil (usada pelo trigger); sem argumento, os de todo perfil que não existe mais (backfill). Devolve quantos anonimizou.';
+
+create or replace function public.anonymize_profile_in_audit_log()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.anonymize_profiles_in_audit_log(old.id);
   return null;
 end;
 $$;
@@ -134,6 +174,7 @@ $$;
 comment on function public.anonymize_profile_in_audit_log() is
   'Trigger AFTER DELETE em profiles (VF-108, D22): anonimiza nome e e-mail do perfil excluído em todo o audit_log, inclusive no registro do próprio DELETE. actor_id e record_pk continuam.';
 
+revoke all on function public.anonymize_profiles_in_audit_log(uuid) from public, anon, authenticated, service_role;
 revoke all on function public.anonymize_profile_in_audit_log() from public, anon, authenticated, service_role;
 
 -- NOME DO TRIGGER: triggers AFTER … FOR EACH ROW da mesma tabela disparam em
@@ -150,20 +191,15 @@ create trigger profiles_anonymize_audit_log
 -- ============================================
 -- 3. Backfill: perfis já excluídos antes desta migration
 -- ============================================
--- Compara id::text com record_pk ->> 'id' em vez de converter o jsonb para
--- uuid: um record_pk fora do formato esperado não derruba a migration inteira.
-update public.audit_log a
-set
-  old_data = public.audit_log_mask_pii(a.old_data),
-  new_data = public.audit_log_mask_pii(a.new_data)
-where a.table_name = 'profiles'
-  and not exists (
-    select 1 from public.profiles p where p.id::text = a.record_pk ->> 'id'
-  )
-  and (
-    public.audit_log_mask_pii(a.old_data) is distinct from a.old_data
-    or public.audit_log_mask_pii(a.new_data) is distinct from a.new_data
-  );
+-- Sem argumento: todo perfil que não existe mais. Comparar id::text com
+-- record_pk ->> 'id', em vez de converter o jsonb para uuid, é o que impede um
+-- record_pk fora do formato esperado de derrubar a migration inteira.
+do $$
+declare
+  v_anonimizados bigint := public.anonymize_profiles_in_audit_log();
+begin
+  raise notice '019: % registro(s) de perfis já excluídos anonimizados no backfill', v_anonimizados;
+end $$;
 
 -- ============================================
 -- 4. Retenção de 2 anos
@@ -230,10 +266,11 @@ comment on table public.audit_log is
 --
 --   select * from pg_available_extensions where name = 'pg_cron';
 --
--- Havendo, ligue pg_cron no Dashboard (Database → Extensions) e rode uma vez
--- no SQL Editor (todo dia às 03:00 UTC = 00:00 em Maceió):
+-- Havendo, ligue pg_cron pelo Dashboard (Database → Extensions) — o schema em
+-- que a extensão é instalada é escolha do Supabase, e o que importa é o
+-- agendador responder pelo schema cron. Então rode uma vez no SQL Editor
+-- (todo dia às 03:00 UTC = 00:00 em Maceió):
 --
---   create extension if not exists pg_cron with schema extensions;
 --   select cron.schedule(
 --     'purgar-audit-log',
 --     '0 3 * * *',

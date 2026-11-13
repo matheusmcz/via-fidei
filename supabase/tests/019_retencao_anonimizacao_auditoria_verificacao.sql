@@ -8,10 +8,10 @@
 --      com "FALHOU" (a regra não bateu) ou "PREPARAÇÃO" (o cenário não pôde
 --      ser montado) e diz qual verificação parou.
 --
--- Nada é gravado: tudo roda dentro de begin … rollback, inclusive o usuário
--- descartável, os registros de auditoria gerados pelo roteiro e a limpeza da
--- seção 5. Se uma verificação falhar, a transação é abortada e também não
--- grava nada.
+-- Nada é gravado: tudo roda dentro de begin … rollback, inclusive os usuários
+-- descartáveis, os registros de auditoria gerados pelo roteiro, o trigger que
+-- a seção 4 desliga e religa, e a limpeza das seções 5 e 6. Se uma verificação
+-- falhar, a transação é abortada e também não grava nada.
 --
 -- O roteiro cria o próprio usuário de teste em auth.users (e-mail em
 -- @viafidei.invalid) em vez de mexer em um editor de verdade: a anonimização
@@ -43,6 +43,7 @@ begin
     'public.audit_log_mask_pii(jsonb)',
     'public.audit_log_retention()',
     'public.purge_audit_log()',
+    'public.anonymize_profiles_in_audit_log(uuid)',
     'public.anonymize_profile_in_audit_log()'
   ] loop
     if to_regprocedure(v_funcao) is null then
@@ -50,10 +51,11 @@ begin
     end if;
   end loop;
 
-  -- As duas que escrevem no log precisam do privilégio do dono, com
-  -- search_path fixo (regra de .claude/rules/data-management.md).
+  -- As que escrevem no log precisam do privilégio do dono, com search_path
+  -- fixo (regra de .claude/rules/data-management.md).
   foreach v_funcao in array array[
     'public.purge_audit_log()',
+    'public.anonymize_profiles_in_audit_log(uuid)',
     'public.anonymize_profile_in_audit_log()'
   ] loop
     if not exists (
@@ -138,6 +140,7 @@ begin
       'public.audit_log_pii_mask()',
       'public.audit_log_mask_pii(jsonb)',
       'public.audit_log_retention()',
+      'public.anonymize_profiles_in_audit_log(uuid)',
       'public.anonymize_profile_in_audit_log()'
     ] loop
       if has_function_privilege(v_role, v_funcao, 'EXECUTE') then
@@ -417,7 +420,99 @@ begin
 end $$;
 
 -- ============================================
--- 4. Limpeza: só sai o que passou dos 2 anos
+-- 4. Backfill: perfis já excluídos antes da 019
+-- ============================================
+-- A seção 3 exercita o trigger. Esta exercita o outro uso da mesma função:
+-- sem argumento, ela alcança todo perfil que não existe mais. É o que roda na
+-- seção 3 da migration (parte irreversível) e o remédio para um DELETE que
+-- escapou do trigger (TRUNCATE, trigger desabilitado).
+--
+-- Para produzir um órfão com dado pessoal à vista, o roteiro desliga o
+-- trigger de propósito — DDL que só a role do SQL Editor faz, e que o
+-- rollback desfaz.
+do $$
+declare
+  v_orfao uuid := gen_random_uuid();
+  v_vivo uuid := gen_random_uuid();
+  v_anonimizados bigint;
+  v_com_pii int;
+begin
+  begin
+    insert into auth.users (id, email, raw_user_meta_data)
+    values (v_orfao, 'backfill-orfao-019@viafidei.invalid', jsonb_build_object('name', 'Órfão do Backfill'));
+    insert into auth.users (id, email, raw_user_meta_data)
+    values (v_vivo, 'backfill-vivo-019@viafidei.invalid', jsonb_build_object('name', 'Perfil que Continua'));
+  exception when others then
+    raise exception 'PREPARAÇÃO 4: não foi possível criar os usuários do teste de backfill: %', sqlerrm;
+  end;
+
+  alter table public.profiles disable trigger profiles_anonymize_audit_log;
+  delete from auth.users where id = v_orfao;
+  alter table public.profiles enable trigger profiles_anonymize_audit_log;
+
+  -- VERIFICAÇÃO POSITIVA: sem o trigger, o dado ficou mesmo no log — é o
+  -- cenário anterior à 019, que o backfill existe para limpar.
+  select count(*) into v_com_pii
+  from public.audit_log a
+  where a.table_name = 'profiles'
+    and a.record_pk ->> 'id' = v_orfao::text
+    and (
+      public.audit_log_mask_pii(a.old_data) is distinct from a.old_data
+      or public.audit_log_mask_pii(a.new_data) is distinct from a.new_data
+    );
+
+  if v_com_pii = 0 then
+    raise exception 'PREPARAÇÃO 4: o perfil órfão deveria ter ficado com nome e e-mail no log (o trigger foi mesmo desligado?)';
+  end if;
+
+  v_anonimizados := public.anonymize_profiles_in_audit_log();
+
+  if v_anonimizados < v_com_pii then
+    raise exception 'FALHOU 4: o backfill anonimizou % registro(s) e havia ao menos % do perfil órfão',
+      v_anonimizados, v_com_pii;
+  end if;
+
+  -- 4a. O órfão foi limpo.
+  if exists (
+    select 1 from public.audit_log a
+    where a.table_name = 'profiles'
+      and a.record_pk ->> 'id' = v_orfao::text
+      and (
+        public.audit_log_mask_pii(a.old_data) is distinct from a.old_data
+        or public.audit_log_mask_pii(a.new_data) is distinct from a.new_data
+      )
+  ) then
+    raise exception 'FALHOU 4a: o backfill deixou nome ou e-mail do perfil excluído';
+  end if;
+
+  -- 4b. Quem continua existindo não foi tocado. É a asserção que pega um
+  -- "not exists" trocado por "exists" no predicado do backfill.
+  if not exists (select 1 from public.profiles where id = v_vivo) then
+    raise exception 'PREPARAÇÃO 4b: o perfil de controle deveria continuar existindo';
+  end if;
+
+  if not exists (
+    select 1 from public.audit_log a
+    where a.table_name = 'profiles'
+      and a.record_pk ->> 'id' = v_vivo::text
+      and (
+        public.audit_log_mask_pii(a.old_data) is distinct from a.old_data
+        or public.audit_log_mask_pii(a.new_data) is distinct from a.new_data
+      )
+  ) then
+    raise exception 'FALHOU 4b: o backfill anonimizou os registros de um perfil que ainda existe';
+  end if;
+
+  -- 4c. Segunda passada não muda nada.
+  if public.anonymize_profiles_in_audit_log() <> 0 then
+    raise exception 'FALHOU 4c: o backfill não é idempotente (a 2a passada mexeu em registro)';
+  end if;
+
+  raise notice 'OK 4: backfill anonimizou % registro(s) órfãos e preservou o perfil de controle', v_anonimizados;
+end $$;
+
+-- ============================================
+-- 5. Limpeza: só sai o que passou dos 2 anos
 -- ============================================
 do $$
 declare
@@ -442,44 +537,44 @@ begin
 
   -- VERIFICAÇÃO POSITIVA: os três estão lá antes da limpeza.
   if (select count(*) from public.audit_log where id in (v_id_antigo, v_id_limite, v_id_recente)) <> 3 then
-    raise exception 'PREPARAÇÃO: os três registros de teste da limpeza não foram gravados';
+    raise exception 'PREPARAÇÃO 5: os três registros de teste da limpeza não foram gravados';
   end if;
 
   v_apagados := public.purge_audit_log();
 
   if exists (select 1 from public.audit_log where id = v_id_antigo) then
-    raise exception 'FALHOU 4: o registro de 3 anos atrás continua no log';
+    raise exception 'FALHOU 5: o registro de 3 anos atrás continua no log';
   end if;
 
   if not exists (select 1 from public.audit_log where id = v_id_limite) then
-    raise exception 'FALHOU 4: o registro de 1 dia dentro do prazo foi apagado';
+    raise exception 'FALHOU 5: o registro de 1 dia dentro do prazo foi apagado';
   end if;
 
   if not exists (select 1 from public.audit_log where id = v_id_recente) then
-    raise exception 'FALHOU 4: o registro de hoje foi apagado';
+    raise exception 'FALHOU 5: o registro de hoje foi apagado';
   end if;
 
   if v_apagados < 1 then
-    raise exception 'FALHOU 4: purge_audit_log() devolveu %, e ao menos 1 registro foi apagado', v_apagados;
+    raise exception 'FALHOU 5: purge_audit_log() devolveu %, e ao menos 1 registro foi apagado', v_apagados;
   end if;
 
   -- Segunda passada não apaga mais nada: a limpeza agendada roda todo dia.
   if public.purge_audit_log() <> 0 then
-    raise exception 'FALHOU 4: a segunda limpeza seguida deveria apagar 0 registros';
+    raise exception 'FALHOU 5: a segunda limpeza seguida deveria apagar 0 registros';
   end if;
 
-  raise notice 'OK 4: limpeza apagou % registro(s) fora do prazo e manteve os de dentro', v_apagados;
+  raise notice 'OK 5: limpeza apagou % registro(s) fora do prazo e manteve os de dentro', v_apagados;
 end $$;
 
 -- ============================================
--- 5. A limpeza roda com a chave de service role (opção B do agendamento)
+-- 6. A limpeza roda com a chave de service role (opção B do agendamento)
 -- ============================================
 do $$
 declare
   v_apagados bigint;
 begin
   if not exists (select 1 from pg_roles where rolname = 'service_role') then
-    raise notice 'OK 5: pulado (role service_role não existe neste banco)';
+    raise notice 'OK 6: pulado (role service_role não existe neste banco)';
     return;
   end if;
 
@@ -488,10 +583,10 @@ begin
   reset role;
 
   if v_apagados is null then
-    raise exception 'FALHOU 5: purge_audit_log() não devolveu número chamada pelo service_role';
+    raise exception 'FALHOU 6: purge_audit_log() não devolveu número chamada pelo service_role';
   end if;
 
-  raise notice 'OK 5: service_role executou a limpeza (% registro(s))', v_apagados;
+  raise notice 'OK 6: service_role executou a limpeza (% registro(s))', v_apagados;
 end $$;
 
 rollback;
