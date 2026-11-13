@@ -18,12 +18,14 @@
  *    se verifica aqui é quem pode executar a função e que ela não encosta no
  *    que está dentro do prazo.
  *
- * O que **não** dá para verificar por aqui: apagar de fato um registro fora do
- * prazo. Nenhuma role da API tem `INSERT` em `audit_log`, então o teste não
- * consegue criar um registro com `occurred_at` antigo — e é bom que não
- * consiga. Essa parte é do roteiro
+ * O que **não** dá para verificar por aqui, por exigir privilégio que nenhuma
+ * role da API tem — e é bom que não tenha: apagar de fato um registro fora do
+ * prazo (precisa gravar um `occurred_at` antigo, e ninguém tem `INSERT` em
+ * `audit_log`) e o backfill de perfis já excluídos (precisa desabilitar o
+ * trigger para produzir um órfão). Essas duas são do roteiro
  * `supabase/tests/019_retencao_anonimizacao_auditoria_verificacao.sql`
- * (seção 4), que roda com a role do SQL Editor dentro de `begin … rollback`.
+ * (seção 4 o backfill, seções 5 e 6 a limpeza), que roda com a role do SQL
+ * Editor dentro de `begin … rollback`.
  *
  * Recusa silenciosa: toda asserção de "foi anonimizado", "não foi apagado" ou
  * "não pode" prova antes que o dado estava lá — as fotos `registrosAntes` e
@@ -234,6 +236,14 @@ beforeAll(async () => {
 
   registrosDepois = await lerRegistrosDoPerfil(disposableId);
   edicoesDeIgrejaDepois = await lerEdicoesDeIgrejaDoAutor(disposableId);
+
+  // Devolve o cenário ao estado do seed, como em `rls-editor.db.test.ts`: o
+  // vínculo some em cascata com o perfil, o telefone não. As fotos acima já
+  // foram tiradas, e este registro extra tem outro autor.
+  await service
+    .from("churches")
+    .update({ phone: TEST_CHURCHES.linked.phone })
+    .eq("id", TEST_CHURCHES.linked.id);
 });
 
 describe("audit_log: anonimização ao excluir um editor (migration 019)", () => {

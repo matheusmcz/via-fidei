@@ -135,6 +135,17 @@ as $$
 declare
   v_anonimizados bigint;
 begin
+  -- A anonimização não tem volta, e com o id é chamada à mão no SQL Editor:
+  -- um id digitado errado apagaria nome e e-mail de um editor ativo. O
+  -- trigger atravessa esta guarda sem problema, porque é AFTER DELETE e a
+  -- linha já não existe no snapshot da transação.
+  if p_profile_id is not null and exists (
+    select 1 from public.profiles p where p.id = p_profile_id
+  ) then
+    raise exception
+      'O perfil % ainda existe: a anonimização da 019 é só para perfil excluído (D22)', p_profile_id;
+  end if;
+
   update public.audit_log a
   set
     old_data = public.audit_log_mask_pii(a.old_data),

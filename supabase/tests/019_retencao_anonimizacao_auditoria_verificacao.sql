@@ -17,6 +17,12 @@
 -- @viafidei.invalid) em vez de mexer em um editor de verdade: a anonimização
 -- não tem volta, e aqui ela é exercida de propósito.
 --
+-- Rode num momento tranquilo: a seção 4 desliga e religa um trigger de
+-- profiles, e esse `alter table` segura um lock que faz qualquer escrita em
+-- profiles (criar editor pelo painel, cadastro, ativação) esperar até o fim do
+-- roteiro. O trigger em si nunca fica desligado para valer: DDL de trigger é
+-- transacional, então abortar entre o disable e o enable religa tudo.
+--
 -- Toda verificação de "sumiu" ou "foi anonimizado" confere ANTES que o dado
 -- estava lá: sem isso, um cenário que nunca gravou nada passaria calado.
 
@@ -459,6 +465,18 @@ begin
     raise exception 'PREPARAÇÃO 4: não foi possível criar os usuários do teste de backfill: %', sqlerrm;
   end;
 
+  -- Registro com record_pk fora do formato de uuid. Existe para provar que a
+  -- comparação em texto (p.id::text = record_pk ->> 'id') é de propósito:
+  -- trocá-la por um cast para uuid derrubaria o backfill — e com ele a
+  -- migration inteira — numa base que tivesse uma linha assim. old_data
+  -- preenchido torna a linha candidata de verdade, então o predicado é mesmo
+  -- avaliado nela.
+  insert into public.audit_log (actor_db_role, table_name, operation, record_pk, old_data)
+  values (
+    'postgres', 'profiles', 'DELETE', '{"id": "nao-e-uuid"}'::jsonb,
+    jsonb_build_object('name', 'Nome Torto', 'email', 'torto@viafidei.invalid')
+  );
+
   alter table public.profiles disable trigger profiles_anonymize_audit_log;
   delete from auth.users where id = v_orfao;
   alter table public.profiles enable trigger profiles_anonymize_audit_log;
@@ -541,7 +559,19 @@ begin
     raise exception 'FALHOU 4d: o backfill não é idempotente (a 2a passada mexeu em registro)';
   end if;
 
-  raise notice 'OK 4: backfill anonimizou % registro(s) órfãos e preservou o perfil e a igreja de controle', v_anonimizados;
+  -- 4e. Chamada com o id de um perfil que AINDA EXISTE é recusada. A
+  -- anonimização não tem volta, e com argumento ela é digitada à mão.
+  begin
+    perform public.anonymize_profiles_in_audit_log(v_vivo);
+    raise exception 'FALHOU 4e: a anonimização aceitou o id de um perfil que ainda existe';
+  exception
+    when sqlstate 'P0001' then
+      if sqlerrm like 'FALHOU 4e%' then
+        raise;
+      end if;
+  end;
+
+  raise notice 'OK 4: backfill anonimizou % registro(s) órfãos, preservou o perfil e a igreja de controle e recusou o id de perfil vivo', v_anonimizados;
 end $$;
 
 -- ============================================
