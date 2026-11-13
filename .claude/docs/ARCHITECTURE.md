@@ -327,12 +327,13 @@ Arquivos de migration para criar o schema do banco, ordenados numericamente:
 - `014_rls_permissoes_editor.sql` - Alinha o RLS à D3: trigger `BEFORE UPDATE` em `churches` que só deixa o editor alterar contato, foto e link do Maps; remove as políticas de escrita do editor em `church_clergy`
 - `015_perfil_inicial_sem_permissao.sql` - Perfil novo nasce sem permissão (VF-082): default de `profiles.is_active` passa a `false` e `handle_new_user()` grava `role = 'editor'` e `is_active = false` explicitamente. Não altera perfis existentes
 - `016_integridade_formatos.sql` - VF-088: funções `is_valid_schedule_time(text)` e `is_valid_clergy_date(text)` e CHECKs de formato em `time`/`end_time` (`schedule_events`, `activity_schedules`), `birth_date`/`death_date` (`clergy`) e `start_date`/`end_date` (`church_clergy`), criados `not valid` e validados no fim; troca o `unique (church_id, clergy_id, start_date)` da `005` pelo índice único `church_clergy_church_clergy_start_key` com `nulls not distinct` (Postgres 15+). Roteiros: `016_integridade_formatos_pre_verificacao.sql` (antes) e `016_integridade_formatos_verificacao.sql` (depois)
-- `017_auditoria_alteracoes.sql` - VF-093: tabela `audit_log` (só inserção, leitura só do admin) preenchida pelo trigger `AFTER INSERT/UPDATE/DELETE` `audit_log_changes` nas 10 tabelas editáveis. Ver **Auditoria de alterações (VF-093)** em Controle de acesso. Roteiro: `017_auditoria_alteracoes_verificacao.sql`
+- `017_auditoria_alteracoes.sql` - VF-093: tabela `audit_log` (sem escrita pela API, leitura só do admin; a `019` acrescentou a anonimização e a limpeza, feitas por funções `security definer`) preenchida pelo trigger `AFTER INSERT/UPDATE/DELETE` `audit_log_changes` nas 10 tabelas editáveis. Ver **Auditoria de alterações (VF-093)** em Controle de acesso. Roteiro: `017_auditoria_alteracoes_verificacao.sql`
 - `018_ordem_e_datas_futuras.sql` - VF-105 (D16, D17): CHECKs de ordem `church_clergy_dates_order_check` (`end_date ≥ start_date`), `clergy_vital_dates_order_check` (`death_date ≥ birth_date`), `schedule_events_time_order_check` e `activity_schedules_time_order_check` (`end_time > time`), com as funções imutáveis `is_clergy_date_order_valid(text, text)` e `is_schedule_time_order_valid(text, text)`, criados `not valid` e validados no fim; triggers `BEFORE INSERT OR UPDATE` `clergy_dates_not_future` e `church_clergy_dates_not_future` (função `enforce_clergy_dates_not_future()`, com `is_clergy_date_not_future(text, text)` e `clergy_today_in_maceio()`), que recusam data futura só nas colunas que mudaram. Depende da `016`. Roteiros: `018_ordem_e_datas_futuras_pre_verificacao.sql` (antes) e `018_ordem_e_datas_futuras_verificacao.sql` (depois)
+- `019_retencao_anonimizacao_auditoria.sql` - VF-108 (D22): retenção de 2 anos e anonimização do `audit_log`. Trigger `profiles_anonymize_audit_log` (`AFTER DELETE` em `profiles`, função `anonymize_profile_in_audit_log()`) troca nome e e-mail por `[anonimizado]` em todos os registros do perfil excluído, inclusive no do próprio `DELETE`; backfill para perfis já excluídos; funções `audit_log_pii_mask()`, `audit_log_mask_pii(jsonb)`, `audit_log_retention()` (`interval '2 years'`) e `purge_audit_log()` (sem parâmetro, `EXECUTE` só para `service_role`). **Não agenda a limpeza**: as duas opções (pg_cron ou job externo) estão na seção 5 da migration. Ver **Retenção e anonimização (VF-108, D22)** em Controle de acesso. Roteiros: `019_retencao_anonimizacao_auditoria_pre_verificacao.sql` (antes) e `019_retencao_anonimizacao_auditoria_verificacao.sql` (depois)
 
 Roteiros de verificação manual ficam em `supabase/tests/` (ex.: `014_rls_permissoes_editor_verificacao.sql`), para rodar no SQL Editor dentro de `begin … rollback`. Eles **não** são pgTAP, então `supabase test db` não os reconhece.
 
-As **18 migrations aplicam do zero, em ordem**, no Supabase local: `npx supabase db reset` recria o banco e aplica `001` a `018` sem erro (conferido em 07/11/2026, CLI 2.122.0, Postgres 17). Em **produção** elas continuam sendo aplicadas à mão pelo SQL Editor (ver `supabase link`/`db push` no VF-087).
+As **19 migrations aplicam do zero, em ordem**, no Supabase local: `npx supabase db reset` recria o banco e aplica `001` a `019` sem erro (conferido em 12/11/2026, CLI 2.122.0, Postgres 17). Em **produção** elas continuam sendo aplicadas à mão pelo SQL Editor (ver `supabase link`/`db push` no VF-087).
 
 Depois de um `db reset` o banco **não fica vazio**: a migration de dados `011` insere os clérigos `José Elielton da Silva` e `Denis Francisco Menezes` mesmo sem o seed, porque o `where not exists` olha só o nome do clérigo (a `013` depois atualiza a bio dessas linhas). O vínculo com a paróquia não entra (depende do `slug`), então as duas linhas ficam sem igreja. Nada quebra, mas teste no banco local não pode supor `clergy` vazia, nem usar `count(*)` sem filtro.
 
@@ -371,7 +372,7 @@ O projeto Vitest `db` fala com o Postgres do Supabase local de verdade: é onde 
 ```bash
 npx supabase start     # sobe o stack local (54321 API, 54322 Postgres, 54323 Studio)
 npm run test:db:env    # gera o .env.test (só na primeira vez, ou se as chaves mudarem)
-npx supabase db reset  # recria o banco e aplica as 18 migrations do zero
+npx supabase db reset  # recria o banco e aplica as 19 migrations do zero
 npm run test:db        # roda tests/db/*.db.test.ts
 npx supabase stop      # ao terminar
 ```
@@ -547,8 +548,31 @@ Toda gravação em `churches`, `schedule_events`, `activities`, `activity_schedu
 - Dados sensíveis: nenhuma tabela auditada tem segredo; a senha fica em `auth.users`. `profiles` tem nome, e-mail, papel e status, que o admin já lê.
 - Tabela editável nova: criar o trigger `audit_log_changes` nela (argumentos: colunas da chave primária) e incluí-la no roteiro de verificação.
 - Server Actions gravam com o cliente da sessão: com o service role, o registro fica sem autor.
-- Ainda sem tela no admin e sem retenção ou limpeza do log. O `DELETE` de um perfil guarda nome e e-mail no log, e nenhuma role da API os apaga (D22: retenção de 2 anos e anonimização a implementar no VF-108).
+- Ainda sem tela no admin (VF-109). Retenção e anonimização estão na `019`, abaixo.
 - Roteiro de verificação: `supabase/tests/017_auditoria_alteracoes_verificacao.sql`.
+
+#### Retenção e anonimização (VF-108, D22)
+
+Migration `019`. Duas regras, separadas de propósito: a **anonimização** é automática e imediata; a **limpeza** é uma função, e o agendamento dela é um passo à parte (ver abaixo).
+
+**Anonimização ao excluir um editor.** `profiles` guarda nome e e-mail, e o log guardava os dois: o `INSERT` do perfil traz a linha inteira em `new_data`, cada `UPDATE` dessas colunas traz o valor antigo e o novo, e o `DELETE` traz a linha inteira em `old_data`. Ao excluir um perfil, o trigger `profiles_anonymize_audit_log` (`AFTER DELETE … FOR EACH ROW`, função `anonymize_profile_in_audit_log()`) troca **nome e e-mail** por `[anonimizado]` em todos os registros daquele perfil, inclusive no do próprio `DELETE`.
+
+- **Fica no banco, não na aplicação:** não existe tela de exclusão de editor. As chamadas a `auth.admin.deleteUser` em `features/auth/admin-actions.ts` só desfazem a criação; a exclusão real vem do painel do Supabase, que apaga o `auth.users` e leva o `profiles` em cascata. Um trigger alcança qualquer caminho (painel, SQL Editor, API, cascata).
+- **Ordem dos triggers importa.** Triggers `AFTER … FOR EACH ROW` da mesma tabela disparam em ordem alfabética do nome, e `audit_log_changes` < `profiles_anonymize_audit_log`: quando a anonimização roda, o registro do `DELETE` já está gravado e entra nela. Renomear o trigger para algo anterior a `audit_log_changes` deixaria justamente esse registro com nome e e-mail — a seção 0 do roteiro de verificação confere a ordem pelos nomes reais.
+- **`actor_id` e `record_pk` continuam** (decisão do usuário, 07/11/2026): sem `actor_id` o log perde a atribuição e sem `record_pk` perde o índice principal; depois que o perfil sai, o UUID não resolve para pessoa nenhuma. `role`, `is_active` e as datas também continuam.
+- A anonimização **reescreve, não apaga**: a contagem de registros do perfil não muda (fora o registro novo do `DELETE`).
+- Chave ausente continua ausente e `null` continua `null`: num `UPDATE`, `old_data`/`new_data` só trazem as colunas que mudaram, e inventar uma chave ali mentiria sobre o que mudou. Por isso a função é idempotente, e `audit_log_mask_pii(x) is distinct from x` é o teste de "ainda falta anonimizar" usado no trigger e no backfill.
+- A `019` também **anonimiza o que já estava gravado** de perfis que não existem mais (backfill, seção 3 da migration).
+
+**Retenção de 2 anos.** `purge_audit_log()` apaga `occurred_at < now() - audit_log_retention()` e devolve quantos apagou. O prazo mora em `audit_log_retention()` (`interval '2 years'`): mudar o prazo é mudar essa função.
+
+- **Sem parâmetro de propósito:** quem chama não encurta o prazo. É o que permite dar `EXECUTE` ao `service_role` — a única role da API que executa a limpeza, e só porque o agendamento externo precisa dela. Uma chave vazada não apaga rastro recente: só o que a limpeza agendada já apagaria. `anon` e `authenticated` (inclusive o admin logado) não executam; o admin **lê** o log, não o apaga.
+- A tabela segue sem `INSERT`, `UPDATE`, `DELETE` e `TRUNCATE` para qualquer role da API: a anonimização e a limpeza passam por funções `security definer`, não por privilégio de tabela.
+- `audit_log_pii_mask()`, `audit_log_mask_pii(jsonb)`, `audit_log_retention()` e `anonymize_profile_in_audit_log()` têm `EXECUTE` revogado de todas as roles da API.
+
+**Agendamento: pendente, e fora da migration.** A `019` não agenda nada, porque não dá para conferir pelo SQL do repositório se o projeto tem `pg_cron` disponível. A seção 5 da migration traz as duas opções prontas: **(A)** `pg_cron` com `cron.schedule('purgar-audit-log', '0 3 * * *', …)` (03:00 UTC = 00:00 em Maceió), que exige ligar a extensão no Dashboard; **(B)** job externo (GitHub Actions, Vercel Cron) chamando `rpc('purge_audit_log')` com a chave de service role. Enquanto nenhuma estiver no ar, a limpeza é manual: `select public.purge_audit_log();`.
+
+**Verificação.** `supabase/tests/019_retencao_anonimizacao_auditoria_pre_verificacao.sql` antes (só lê: diz quantos registros o backfill anonimiza e quantos a primeira limpeza apaga) e `supabase/tests/019_retencao_anonimizacao_auditoria_verificacao.sql` depois. No Supabase local, `tests/db/audit-log-retention.db.test.ts` cobre a anonimização ponta a ponta e quem pode executar a limpeza; apagar registro fora do prazo só o roteiro SQL verifica, porque nenhuma role da API consegue gravar um `occurred_at` antigo.
 
 ### Autenticação
 

@@ -166,7 +166,7 @@ export async function assertLocalDatabaseReady(
   if (missing.length > 0) {
     throw new Error(
       `O Supabase local está no ar, mas sem as migrations completas: faltam ${missing.join(", ")}. ` +
-        "Rode `npx supabase db reset` para aplicar as 18 migrations do zero."
+        "Rode `npx supabase db reset` para aplicar as 19 migrations do zero."
     );
   }
 }
